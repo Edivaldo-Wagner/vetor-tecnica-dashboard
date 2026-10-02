@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   // Carregar utilizadores do backend
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/users/', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/`, {
         headers: {
           'Authorization': `Bearer ${tokens?.access}`,
         },

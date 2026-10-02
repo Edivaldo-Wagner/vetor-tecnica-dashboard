@@ -29,11 +29,11 @@ export const AuthProvider = ({ children }) => {
     const refresh = localStorage.getItem('refresh_token');
     return access && refresh ? { access, refresh } : null;
   });
-
+  
   const loginUser = async (username, password) => {
     try {
       // ✅ URL corrigida para bater exatamente com a tua urls.py do Django
-      const response = await fetch('http://127.0.0.1:8000/api/auth/login/', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
