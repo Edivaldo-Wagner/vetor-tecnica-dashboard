@@ -1,12 +1,56 @@
-from rest_framework import viewsets, parsers, status
+from rest_framework import viewsets, parsers, generics, status
+from .permissions import IsAdminUserCustom
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import get_user_model
 from django.db.models import Sum
 from .models import Client, ServiceOrder, FinancialRecord, InspectionCategory, InspectionItem, InspectionPhoto, TeamMember, PlatformCompany
 from .serializers import (
     ClientSerializer, ServiceOrderSerializer, FinancialRecordSerializer,
-    InspectionCategorySerializer, InspectionItemSerializer, InspectionPhotoSerializer, TeamMemberSerializer, PlatformCompanySerializer
+    InspectionCategorySerializer, InspectionItemSerializer, InspectionPhotoSerializer, TeamMemberSerializer, PlatformCompanySerializer, 
+    RegisterSerializer, UserSerializer
 )
+
+User = get_user_model()
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUserCustom]
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Adiciona os campos diretamente dentro do Token JWT
+        token['username'] = user.username
+        token['email'] = user.email
+        token['first_name'] = user.first_name
+        token['last_name'] = user.last_name
+        token['role'] = user.role
+        token['is_superuser'] = user.is_superuser
+        token['is_active'] = user.is_active
+
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Mantém também o envio na resposta da requisição caso o frontend utilize
+        data['user'] = UserSerializer(self.user).data
+        return data
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+# View de Cadastro Comum
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]
+    serializer_class = RegisterSerializer
 
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all().order_by('-created_at')

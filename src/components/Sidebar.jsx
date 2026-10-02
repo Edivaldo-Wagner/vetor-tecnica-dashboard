@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Users,
   FileText,
@@ -9,12 +9,20 @@ import {
   ChevronDown,
   Menu,
   X,
+  LogOut,
+  Shield,
+  User as UserIcon,
 } from "lucide-react";
+import { AuthContext } from "../authContext/AuthContext";
 
 export default function Sidebar({ currentTab, setCurrentTab }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { logoutUser, user } = useContext(AuthContext);
 
-  const menuItems = [
+  // Verifica se o utilizador logado tem perfil de Admin ou é superuser
+  const isAdmin = user?.role === 'ADMIN' || user?.is_superuser;
+
+  const baseMenuItems = [
     { id: "clientes", label: "Clientes", icon: Users, badge: "3" },
     { id: "os", label: "Ordens de Serviço", icon: FileText, badge: "5" },
     { id: "laudos", label: "Laudos", icon: ClipboardCheck, badge: "5" },
@@ -25,12 +33,25 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
 
   const handleTabClick = (id) => {
     setCurrentTab(id);
-    setIsOpen(false); // Fecha o menu no mobile após selecionar uma aba
+    setIsOpen(false);
   };
+
+  // Obtém a inicial do utilizador para o avatar
+  const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : "U";
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "ADMIN" || user.is_superuser) {
+        setCurrentTab("admin");
+      } else {
+        setCurrentTab("financeiro");
+      }
+    }
+  }, [user]);
 
   return (
     <>
-      {/* Botão Hambúrguer para Dispositivos Móveis (Visível apenas em < md) */}
+      {/* Botão Hambúrguer para Mobile */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -41,7 +62,7 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
         </button>
       </div>
 
-      {/* Overlay/Fundo escuro ao abrir a sidebar no mobile */}
+      {/* Overlay mobile */}
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
@@ -72,7 +93,6 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
               </div>
             </div>
 
-            {/* Botão fechar dentro do drawer no mobile */}
             <button
               onClick={() => setIsOpen(false)}
               className="md:hidden text-slate-400 hover:text-white"
@@ -81,54 +101,106 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
             </button>
           </div>
 
-          {/* Seletor de Unidade / Empresa */}
-          <div className="bg-[#1e2732] p-3 rounded-lg mb-6 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-700 rounded text-xs flex items-center justify-center font-semibold text-white">
-                PR
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">Paraná Refinaria</p>
-                <p className="text-[10px] text-slate-400">12 O.S. ativas</p>
-              </div>
+          {/* ÁREA ADMINISTRATIVA EM DESTAQUE ESPECIAL (Apenas se for Admin) */}
+          {isAdmin && (
+            <div className="mb-5">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-500/80 mb-2 px-1">
+                Acesso Gerencial
+              </p>
+              <button
+                onClick={() => handleTabClick("admin")}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${
+                  currentTab === "admin"
+                    ? "bg-amber-500/15 border-amber-500/60 text-amber-400 shadow-lg shadow-amber-500/5"
+                    : "bg-[#1e2732]/80 border-slate-700/60 text-slate-300 hover:bg-[#1e2732] hover:border-amber-500/40 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${
+                    currentTab === "admin" ? "bg-amber-500/20 text-amber-400" : "bg-slate-800 text-amber-500"
+                  }`}>
+                    <Shield size={18} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold leading-tight">Administração</p>
+                    <p className="text-[10px] text-slate-400">Painel de Controlo</p>
+                  </div>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                  Admin
+                </span>
+              </button>
             </div>
-            <ChevronDown size={14} className="text-slate-400" />
+          )}
+
+          {/* Menu Principal Operational */}
+          <div>
+            {isAdmin && (
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-2 px-1">
+                Módulos
+              </p>
+            )}
+            <nav className="space-y-1">
+              {baseMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabClick(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                      isActive
+                        ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
+                        : "text-slate-400 hover:bg-[#1e2732] hover:text-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon size={16} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          isActive
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Rodapé da Sidebar - Perfil do Utilizador + Logout */}
+        <div className="pt-4 border-t border-slate-800 space-y-3">
+          {/* Card com os dados do Utilizador */}
+          <div className="flex items-center gap-3 px-3 py-2 bg-[#1e2732]/50 rounded-lg">
+            <div className="w-10 h-10 bg-amber-500/20 border border-amber-500/40 rounded-full flex items-center justify-center font-bold text-amber-400 text-base shrink-0">
+              {userInitial}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-white truncate">
+                {user?.username || ""}
+              </p>
+              <p className="text-xs text-slate-400 truncate">
+                {user?.email || `user_id: ${user?.user_id || '---'}`}
+              </p>
+            </div>
           </div>
 
-          {/* Menu Principal */}
-          <nav className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition ${
-                    isActive
-                      ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
-                      : "text-slate-400 hover:bg-[#1e2732] hover:text-slate-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon size={16} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        isActive
-                          ? "bg-amber-500/20 text-amber-400"
-                          : "text-slate-500"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+          {/* Botão de Sair */}
+          <button
+            onClick={logoutUser}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition"
+          >
+            <LogOut size={18} />
+            <span>Sair da conta</span>
+          </button>
         </div>
       </aside>
     </>
