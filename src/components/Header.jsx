@@ -2,6 +2,9 @@ import React from 'react';
 import { Plus, Edit3, Download } from 'lucide-react';
 
 export default function Header() {
+  return null; // O componente não renderiza nada na tela
+
+  /*
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-gray-200 gap-4">
       <div>
@@ -35,4 +38,5 @@ export default function Header() {
       </div>
     </header>
   );
+  */
 }

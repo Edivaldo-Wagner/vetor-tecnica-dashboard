@@ -6,8 +6,9 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from api.views import (
     UserViewSet, ClientViewSet, ServiceOrderViewSet, FinancialRecordViewSet,
-    InspectionCategoryViewSet, InspectionItemViewSet, InspectionPhotoViewSet, TeamMemberViewSet, PlatformCompanyViewSet,
-    RegisterView, CustomTokenObtainPairView
+    InspectionTemplateViewSet, InspectionCategoryViewSet, InspectionItemViewSet,
+    InspectionPhotoViewSet, TeamMemberViewSet, PlatformCompanyViewSet,
+    RegisterView, CustomTokenObtainPairView, EquipmentViewSet
 )
 
 router = DefaultRouter()
@@ -15,11 +16,13 @@ router.register(r'users', UserViewSet, basename='user')
 router.register(r'clients', ClientViewSet)
 router.register(r'service-orders', ServiceOrderViewSet)
 router.register(r'financial-records', FinancialRecordViewSet)
+router.register(r'inspection-templates', InspectionTemplateViewSet)
 router.register(r'inspection-categories', InspectionCategoryViewSet)
 router.register(r'inspection-items', InspectionItemViewSet)
 router.register(r'inspection-photos', InspectionPhotoViewSet)
 router.register(r'team-members', TeamMemberViewSet)
 router.register(r'platform-companies', PlatformCompanyViewSet)
+router.register(r'equipments', EquipmentViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

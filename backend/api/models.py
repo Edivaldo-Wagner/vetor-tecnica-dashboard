@@ -67,19 +67,80 @@ class Client(models.Model):
 
 class ServiceOrder(models.Model):
     STATUS_CHOICES = [
-        ('em_campo', 'Em Campo'),
         ('aberta', 'Aguardando Despacho'),
+        ('em_campo', 'Em Campo'),
         ('concluida', 'Concluída'),
+        ('cancelada', 'Cancelada'),
     ]
 
-    title = models.CharField(max_length=255)
+    os_number = models.CharField(max_length=50, unique=True, verbose_name="Número da O.S.")
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='service_orders')
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='aberta')
-    technicians_count = models.IntegerField(default=1)
+    
+    # Agendamento e Execução
+    execution_start = models.DateTimeField(null=True, blank=True, verbose_name="Início Previsto")
+    execution_end = models.DateTimeField(null=True, blank=True, verbose_name="Fim Previsto")
+    check_in = models.DateTimeField(null=True, blank=True, verbose_name="Check-in Real")
+    check_out = models.DateTimeField(null=True, blank=True, verbose_name="Check-out Real")
+    
+    # Equipa de Técnicos Responsáveis
+    technicians = models.ManyToManyField('TeamMember', blank=True, related_name='service_orders')
+    
+    # Detalhes do Trabalho
+    scope = models.TextField(blank=True, null=True, verbose_name="Escopo do Trabalho")
+    complementary_services = models.TextField(blank=True, null=True, verbose_name="Serviços Complementares")
+    conclusions = models.TextField(blank=True, null=True, verbose_name="Conclusões / Observações Técnicas")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aberta')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} - {self.client.name}"
+        return f"O.S. #{self.os_number} - {self.client.name}"
+
+
+class ServiceOrderEquipment(models.Model):
+    """
+    Relaciona um Equipamento/Sistema específico a uma O.S., 
+    vinculando qual Modelo de Checklist foi usado para inspecioná-lo.
+    """
+    service_order = models.ForeignKey('ServiceOrder', on_delete=models.CASCADE, related_name='order_equipments')
+    equipment = models.ForeignKey('Equipment', on_delete=models.CASCADE, related_name='order_inspections')
+    template = models.ForeignKey('InspectionTemplate', on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"O.S. #{self.service_order.os_number} -> {self.equipment.name}"
+
+
+class InspectionResponse(models.Model):
+    """
+    Armazena a resposta individual para cada item do checklist de um equipamento na O.S.
+    """
+    STATUS_CHOICES = [
+        ('SIM', 'Sim / Conforme'),
+        ('NAO', 'Não / Não Conforme'),
+        ('NA', 'N/A (Não Aplicável)'),
+    ]
+
+    order_equipment = models.ForeignKey('ServiceOrderEquipment', on_delete=models.CASCADE, related_name='responses')
+    item = models.ForeignKey('InspectionItem', on_delete=models.CASCADE)
+    
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SIM')
+    value = models.CharField(max_length=255, blank=True, null=True, verbose_name="Valor Medido / Observação")
+
+    def __str__(self):
+        return f"{self.item.label}: {self.status} ({self.value or ''})"
+
+
+class ServiceOrderSignature(models.Model):
+    """
+    Assinaturas digitais recolhidas no encerramento da O.S.
+    """
+    service_order = models.OneToOneField('ServiceOrder', on_delete=models.CASCADE, related_name='signature')
+    client_name = models.CharField(max_length=255, verbose_name="Nome do Responsável do Cliente")
+    client_signature = models.ImageField(upload_to='signatures/client/', blank=True, null=True)
+    technician_name = models.CharField(max_length=255, verbose_name="Nome do Técnico")
+    technician_signature = models.ImageField(upload_to='signatures/tech/', blank=True, null=True)
+    signed_at = models.DateTimeField(auto_now_add=True)
 
 
 class FinancialRecord(models.Model):
@@ -98,21 +159,62 @@ class FinancialRecord(models.Model):
     def __str__(self):
         return f"{self.client.name} - R$ {self.amount} ({self.status})"
 
-class InspectionCategory(models.Model):
-    name = models.CharField(max_length=255)
+class InspectionTemplate(models.Model):
+    """
+    Guarda o Modelo Geral de Checklist (Ex: 'SDAI - Sistema de Alarme GST', 'Casa de Bombas')
+    """
+    EQUIPMENT_TYPES = [
+        ('SDAI', 'Sistema de Detecção e Alarme de Incêndio'),
+        ('BOMBAS', 'Casa de Bombas / Motobombas'),
+        ('SPRINKLERS', 'Rede de Chuveiros Automáticos (Sprinklers)'),
+        ('ILUMINACAO', 'Iluminação de Emergência'),
+        ('EXTINTORES', 'Extintores de Incêndio'),
+        ('OUTRO', 'Outro Sistema'),
+    ]
+
+    name = models.CharField(max_length=255, verbose_name="Nome do Modelo")
+    equipment_type = models.CharField(max_length=50, choices=EQUIPMENT_TYPES, default='SDAI', verbose_name="Tipo de Equipamento")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_equipment_type_display()})"
+
+class InspectionCategory(models.Model):
+    """
+    Blocos/Categorias dentro do Modelo (Ex: '01 - DETECTORES', '05 - CENTRAL DE ALARME')
+    """
+    template = models.ForeignKey(InspectionTemplate, related_name='categories', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255, verbose_name="Título da Categoria / Bloco")
+    order = models.PositiveIntegerField(default=0, verbose_name="Ordem de Exibição")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return f"{self.template.name} -> {self.title}"
+
 
 class InspectionItem(models.Model):
+    """
+    A Pergunta ou Verificação Técnica Individual
+    """
+    RESPONSE_TYPES = [
+        ('BOOLEAN', 'Sim / Não / N/A (Conforme / Não Conforme)'),
+        ('NUMBER', 'Número / Medição (Volts, PSI, Horímetro)'),
+        ('TEXT', 'Texto Livre / Observação'),
+    ]
+
     category = models.ForeignKey(InspectionCategory, related_name='items', on_delete=models.CASCADE)
-    title = models.CharField(max_length=255)
-    is_completed = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    label = models.CharField(max_length=255, verbose_name="Pergunta / Item de Inspeção")
+    response_type = models.CharField(max_length=20, choices=RESPONSE_TYPES, default='BOOLEAN')
+    order = models.PositiveIntegerField(default=0, verbose_name="Ordem")
+
+    class Meta:
+        ordering = ['order', 'id']
 
     def __str__(self):
-        return f"{self.category.name} - {self.title}"
+        return f"{self.category.title} -> {self.label}"
 
 class InspectionPhoto(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -174,3 +276,30 @@ class PlatformCompany(models.Model):
 
     def __str__(self):
         return self.name
+
+class Equipment(models.Model):
+    SYSTEM_TYPES = [
+        ('SDAI', 'Sistema de Detecção e Alarme de Incêndio'),
+        ('BOMBAS', 'Casa de Bombas / Motobombas'),
+        ('SPRINKLERS', 'Rede de Chuveiros Automáticos (Sprinklers)'),
+        ('ILUMINACAO', 'Iluminação de Emergência'),
+        ('EXTINTORES', 'Extintores de Incêndio'),
+        ('OUTRO', 'Outro Sistema'),
+    ]
+
+    client = models.ForeignKey(
+        'Client', 
+        on_delete=models.CASCADE, 
+        related_name='equipments',
+        verbose_name="Cliente"
+    )
+    name = models.CharField(max_length=255, verbose_name="Nome do Sistema / Equipamento")
+    system_type = models.CharField(max_length=20, choices=SYSTEM_TYPES, default='SDAI')
+    model = models.CharField(max_length=100, blank=True, null=True, verbose_name="Modelo / Marca")
+    location = models.CharField(max_length=255, blank=True, null=True, verbose_name="Localização na Planta")
+    serial_number = models.CharField(max_length=100, blank=True, null=True, verbose_name="Nº de Série")
+    notes = models.TextField(blank=True, null=True, verbose_name="Observações Técnicas")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.client.name}"

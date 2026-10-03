@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 import dj_database_url
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,7 +32,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 # Application definition
 
@@ -91,44 +92,56 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+SIMPLE_JWT = {
+    # Aumenta o tempo do access token (ex: 1 dia ou 8 horas)
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    
+    # Aumenta o tempo do refresh token (ex: 7 dias)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-#DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'vetortecnica_db',
-#        'USER': 'postgres',
-#        'PASSWORD': '123',  
-#        'HOST': '127.0.0.1',
-#        'PORT': '5432',
-#    }
-#}
-
-DATABASE_URL = os.environ.get(
-    'DATABASE_URL',
-    'postgresql://postgres.iompmlhcxapxhurxhopi:edy123456ABC%40%23@aws-0-eu-west-2.pooler.supabase.com:6543/postgres'
-)
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'vetortecnica_db',
+        'USER': 'postgres',
+        'PASSWORD': '123',  
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
+    }
 }
 
+#DATABASE_URL = os.environ.get(
+#    'DATABASE_URL',
+#    'postgresql://postgres.iompmlhcxapxhurxhopi:edy123456ABC%40%23@aws-0-eu-west-2.pooler.supabase.com:6543/postgres'
+#)
+
 #DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'vetortecnica_db',
-#        'USER': 'postgres',
-#        'PASSWORD': '123',  
-#        'HOST': '127.0.0.1',
-#        'PORT': '5432',
-#    }
+#    'default': dj_database_url.config(
+#        default=DATABASE_URL,
+#        conn_max_age=600,
+#        ssl_require=True
+#    )
 #}
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'vetortecnica_db',
+        'USER': 'postgres',
+        'PASSWORD': '123',  
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
+    }
+}
 
 
 # Password validation

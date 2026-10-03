@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useContext } from "react";
 import {
   Users,
   FileText,
@@ -12,6 +12,8 @@ import {
   LogOut,
   Shield,
   User as UserIcon,
+  HardDrive,
+  ListChecks,
 } from "lucide-react";
 import { AuthContext } from "../authContext/AuthContext";
 
@@ -19,16 +21,13 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
   const [isOpen, setIsOpen] = useState(false);
   const { logoutUser, user } = useContext(AuthContext);
 
-  // Verifica se o utilizador logado tem perfil de Admin ou é superuser
   const isAdmin = user?.role === 'ADMIN' || user?.is_superuser;
 
   const baseMenuItems = [
-    { id: "clientes", label: "Clientes", icon: Users, badge: "3" },
-    { id: "os", label: "Ordens de Serviço", icon: FileText, badge: "5" },
-    { id: "laudos", label: "Laudos", icon: ClipboardCheck, badge: "5" },
-    { id: "equipe", label: "Equipe", icon: UserCheck, badge: "5" },
-    { id: "plataforma", label: "Minha plataforma", icon: Layers },
-    { id: "financeiro", label: "Financeiro", icon: DollarSign },
+    { id: "clientes", label: "Clientes", icon: Users, badge: "0" },
+    { id: "equipamentos", label: "Equipamentos / Sistemas", icon: HardDrive },
+    { id: "checklists", label: "Modelos de Checklist", icon: ListChecks },
+    { id: "os", label: "Ordens de Serviço", icon: FileText, badge: "0" },
   ];
 
   const handleTabClick = (id) => {
@@ -36,18 +35,7 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
     setIsOpen(false);
   };
 
-  // Obtém a inicial do utilizador para o avatar
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : "U";
-
-  useEffect(() => {
-    if (user) {
-      if (user.role === "ADMIN" || user.is_superuser) {
-        setCurrentTab("admin");
-      } else {
-        setCurrentTab("financeiro");
-      }
-    }
-  }, [user]);
 
   return (
     <>
@@ -76,9 +64,10 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        <div>
+        {/* CONTAINER COM SCROLL AUTOMÁTICO PARA O CONTEÚDO PRINCIPAL */}
+        <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar space-y-5">
           {/* Header com Logo */}
-          <div className="flex items-center justify-between mb-6 px-2 pt-2 md:pt-0">
+          <div className="flex items-center justify-between px-2 pt-2 md:pt-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-slate-950 text-lg">
                 VT
@@ -101,9 +90,9 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
             </button>
           </div>
 
-          {/* ÁREA ADMINISTRATIVA EM DESTAQUE ESPECIAL (Apenas se for Admin) */}
+          {/* ÁREA ADMINISTRATIVA */}
           {isAdmin && (
-            <div className="mb-5">
+            <div>
               <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-500/80 mb-2 px-1">
                 Acesso Gerencial
               </p>
@@ -116,9 +105,13 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    currentTab === "admin" ? "bg-amber-500/20 text-amber-400" : "bg-slate-800 text-amber-500"
-                  }`}>
+                  <div
+                    className={`p-2 rounded-lg ${
+                      currentTab === "admin"
+                        ? "bg-amber-500/20 text-amber-400"
+                        : "bg-slate-800 text-amber-500"
+                    }`}
+                  >
                     <Shield size={18} />
                   </div>
                   <div className="text-left">
@@ -133,7 +126,7 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
             </div>
           )}
 
-          {/* Menu Principal Operational */}
+          {/* Menu Principal Operacional */}
           <div>
             {isAdmin && (
               <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-2 px-1">
@@ -176,8 +169,8 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
           </div>
         </div>
 
-        {/* Rodapé da Sidebar - Perfil do Utilizador + Logout */}
-        <div className="pt-4 border-t border-slate-800 space-y-3">
+        {/* RODAPÉ DA SIDEBAR - PERMANECE FIXO NO FUNDO */}
+        <div className="pt-4 border-t border-slate-800 space-y-3 shrink-0">
           {/* Card com os dados do Utilizador */}
           <div className="flex items-center gap-3 px-3 py-2 bg-[#1e2732]/50 rounded-lg">
             <div className="w-10 h-10 bg-amber-500/20 border border-amber-500/40 rounded-full flex items-center justify-center font-bold text-amber-400 text-base shrink-0">
@@ -188,7 +181,7 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
                 {user?.username || ""}
               </p>
               <p className="text-xs text-slate-400 truncate">
-                {user?.email || `user_id: ${user?.user_id || '---'}`}
+                {user?.email || `user_id: ${user?.user_id || "---"}`}
               </p>
             </div>
           </div>

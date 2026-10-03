@@ -2,13 +2,14 @@ import React, { useState, useEffect, useContext } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import MetricsCards from "./components/MetricsCards";
-import InspectionChecklist from "./components/InspectionChecklist";
-import FieldAppCard from "./components/FieldAppCard";
 import ClientsView from "./components/ClientsView";
 import ReportsView from "./components/ReportsView";
 import TeamView from "./components/TeamView";
 import PlatformView from "./components/PlatformView";
 import FinancialView from "./components/FinancialView";
+import EquipmentsView from "./components/EquipmentsView";
+import ChecklistsView from "./components/ChecklistsView";
+import ServiceOrdersView from "./components/ServiceOrdersView";
 import AdminDashboard from "./components/AdminDashboard";
 import Login from "./components/Login.jsx";
 import { AuthContext } from "./authContext/AuthContext.jsx";
@@ -54,16 +55,11 @@ export default function App() {
         {currentTab === "equipe" && <TeamView />}
         {currentTab === "plataforma" && <PlatformView />}
         {currentTab === "financeiro" && <FinancialView />}
-        {currentTab === "os" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-            <div className="lg:col-span-2">
-              <InspectionChecklist />
-            </div>
-            <div>
-              <FieldAppCard />
-            </div>
-          </div>
-        )}
+        {currentTab === "equipamentos" && <EquipmentsView />}
+        {currentTab === "checklists" && <ChecklistsView />}
+        
+        {/* Renderização limpa da nova visão de Ordens de Serviço */}
+        {currentTab === "os" && <ServiceOrdersView />}
       </main>
     </div>
   );
