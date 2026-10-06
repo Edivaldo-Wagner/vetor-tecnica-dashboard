@@ -79,20 +79,17 @@ class ServiceOrderSignatureSerializer(serializers.ModelSerializer):
         model = ServiceOrderSignature
         fields = '__all__'
 
-
-class ServiceOrderEquipmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ServiceOrderEquipment
-        fields = ['id', 'equipment', 'template']
-
 class ServiceOrderSerializer(serializers.ModelSerializer):
-    # Sobrescrevemos o campo para aceitar a lista de IDs de utilizadores sem travar no validation nativo
     technicians = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
         write_only=True
     )
-    order_equipments = serializers.JSONField(required=False, write_only=True)
+    # Permite receber a lista ao criar (write) E devolver os equipamentos serializados na leitura (read)
+    order_equipments = ServiceOrderEquipmentSerializer(many=True, read_only=True)
+    
+    # Campo extra apenas para receber os dados ao criar no POST
+    order_equipments_input = serializers.JSONField(required=False, write_only=True)
 
     class Meta:
         model = ServiceOrder
@@ -100,14 +97,14 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         technicians_ids = validated_data.pop('technicians', [])
-        order_equipments_data = validated_data.pop('order_equipments', [])
+        # Pega do order_equipments_input ou order_equipments se enviado
+        order_equipments_data = validated_data.pop('order_equipments_input', validated_data.pop('order_equipments', []))
 
         # 1. Cria a Ordem de Serviço principal
         service_order = ServiceOrder.objects.create(**validated_data)
 
         # 2. Associa os técnicos/utilizadores válidos
         if technicians_ids:
-            # Pega o modelo real associado ao campo ManyToMany do ServiceOrder
             related_model = ServiceOrder._meta.get_field('technicians').related_model
             valid_techs = related_model.objects.filter(id__in=technicians_ids)
             service_order.technicians.set(valid_techs)

@@ -1,3 +1,4 @@
+// ExecuteServiceOrderModal.jsx
 import React, { useState, useEffect } from "react";
 import { X, CheckCircle2, Loader2 } from "lucide-react";
 
@@ -76,16 +77,33 @@ export default function ExecuteServiceOrderModal({
         {/* Form / Checklist Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 flex-1">
           {serviceOrder.order_equipments?.map((orderEq) => {
-            const template = templates.find((t) => t.id === orderEq.template);
+            // AJUSTE AQUI: Tenta encontrar o template usando comparação solta (==) 
+            // ou verificando se é orderEq.template_id / objeto direto
+            const templateId = orderEq.template_id || orderEq.template;
+            const template =
+              (typeof orderEq.template === "object" ? orderEq.template : null) ||
+              templates.find((t) => String(t.id) === String(templateId));
+
             return (
-              <div key={orderEq.id} className="border rounded-xl p-4 bg-gray-50/50 space-y-4">
+              <div key={orderEq.id || Math.random()} className="border rounded-xl p-4 bg-gray-50/50 space-y-4">
                 <div className="border-b pb-2">
-                  <h3 className="font-semibold text-blue-900">{orderEq.equipment_name}</h3>
-                  <p className="text-xs text-gray-500">Local: {orderEq.equipment_location}</p>
+                  <h3 className="font-semibold text-blue-900">
+                    {orderEq.equipment_name || orderEq.equipment?.name || "Equipamento"}
+                  </h3>
+                  {orderEq.equipment_location && (
+                    <p className="text-xs text-gray-500">Local: {orderEq.equipment_location}</p>
+                  )}
                 </div>
 
+                {/* Se não encontrou o template, avisa na tela para ajudar no debug */}
+                {!template && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                    Nenhum checklist associado ou template não encontrado na lista (ID: {String(templateId)}).
+                  </div>
+                )}
+
                 {template?.categories?.map((cat) => (
-                  <div key={cat.id} className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
+                  <div key={cat.id || cat.title} className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
                     <h4 className="text-sm font-bold text-gray-700 uppercase border-b pb-1">
                       {cat.title}
                     </h4>
