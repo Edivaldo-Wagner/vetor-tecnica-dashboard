@@ -1,6 +1,6 @@
-// ExecuteServiceOrderModal.jsx
-import React, { useState, useEffect } from "react";
-import { X, CheckCircle2, Loader2 } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import SignatureCanvas from "react-signature-canvas";
 
 export default function ExecuteServiceOrderModal({
   isOpen,
@@ -10,51 +10,55 @@ export default function ExecuteServiceOrderModal({
   templates = [],
   isLoading
 }) {
-  const [responses, setResponses] = useState({});
   const [complementaryServices, setComplementaryServices] = useState("");
   const [conclusions, setConclusions] = useState("");
+  
+  // Estados para os nomes das assinaturas
+  const [clientName, setClientName] = useState("");
+  const [technicianName, setTechnicianName] = useState("");
+
+  // Refs para capturar o desenho dos canvases
+  const clientSigRef = useRef(null);
+  const techSigRef = useRef(null);
 
   useEffect(() => {
     if (serviceOrder) {
       setComplementaryServices(serviceOrder.complementary_services || "");
       setConclusions(serviceOrder.conclusions || "");
-
-      // Mapeia respostas existentes caso seja uma reedição
-      const initialResponses = {};
-      serviceOrder.order_equipments?.forEach((orderEq) => {
-        orderEq.responses?.forEach((resp) => {
-          initialResponses[resp.item] = {
-            item: resp.item,
-            status: resp.status,
-            value: resp.value || ""
-          };
-        });
-      });
-      setResponses(initialResponses);
+      setClientName(serviceOrder.client_name || "");
+      
+      // Se houver técnicos associados, define o primeiro como padrão no nome do técnico
+      if (serviceOrder.technicians_details && serviceOrder.technicians_details.length > 0) {
+        setTechnicianName(serviceOrder.technicians_details[0].name || "");
+      }
     }
   }, [serviceOrder]);
 
   if (!isOpen || !serviceOrder) return null;
 
-  const handleResponseChange = (itemId, field, value) => {
-    setResponses((prev) => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        item: itemId,
-        [field]: value
-      }
-    }));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Converte as assinaturas para dados em formato imagem (Base64) se não estiverem vazias
+    const clientSignatureData = !clientSigRef.current.isEmpty() 
+      ? clientSigRef.current.toDataURL("image/png") 
+      : null;
+
+    const techSignatureData = !techSigRef.current.isEmpty() 
+      ? techSigRef.current.toDataURL("image/png") 
+      : null;
+
     onSaveExecution({
       serviceOrderId: serviceOrder.id,
-      responses: Object.values(responses),
       complementary_services: complementaryServices,
       conclusions: conclusions,
-      status: "concluida"
+      status: "concluida",
+      signature: {
+        client_name: clientName,
+        client_signature: clientSignatureData,
+        technician_name: technicianName,
+        technician_signature: techSignatureData
+      }
     });
   };
 
@@ -62,7 +66,7 @@ export default function ExecuteServiceOrderModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 shrink-0">
           <div>
             <h2 className="text-lg font-bold text-gray-800">
               Execução O.S. #{serviceOrder.os_number} - {serviceOrder.client_name}
@@ -74,88 +78,10 @@ export default function ExecuteServiceOrderModal({
           </button>
         </div>
 
-        {/* Form / Checklist Body */}
+        {/* Corpo do Formulário */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 flex-1">
-          {serviceOrder.order_equipments?.map((orderEq) => {
-            // AJUSTE AQUI: Tenta encontrar o template usando comparação solta (==) 
-            // ou verificando se é orderEq.template_id / objeto direto
-            const templateId = orderEq.template_id || orderEq.template;
-            const template =
-              (typeof orderEq.template === "object" ? orderEq.template : null) ||
-              templates.find((t) => String(t.id) === String(templateId));
-
-            return (
-              <div key={orderEq.id || Math.random()} className="border rounded-xl p-4 bg-gray-50/50 space-y-4">
-                <div className="border-b pb-2">
-                  <h3 className="font-semibold text-blue-900">
-                    {orderEq.equipment_name || orderEq.equipment?.name || "Equipamento"}
-                  </h3>
-                  {orderEq.equipment_location && (
-                    <p className="text-xs text-gray-500">Local: {orderEq.equipment_location}</p>
-                  )}
-                </div>
-
-                {/* Se não encontrou o template, avisa na tela para ajudar no debug */}
-                {!template && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-                    Nenhum checklist associado ou template não encontrado na lista (ID: {String(templateId)}).
-                  </div>
-                )}
-
-                {template?.categories?.map((cat) => (
-                  <div key={cat.id || cat.title} className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
-                    <h4 className="text-sm font-bold text-gray-700 uppercase border-b pb-1">
-                      {cat.title}
-                    </h4>
-
-                    {cat.items?.map((item) => (
-                      <div key={item.id} className="flex flex-col md:flex-row md:items-center justify-between gap-2 py-2 border-b last:border-b-0">
-                        <span className="text-sm text-gray-800 font-medium">{item.label}</span>
-
-                        <div className="flex items-center gap-3">
-                          {/* Botões de Resposta Sim/Não/NA */}
-                          <div className="flex bg-gray-100 p-1 rounded-lg">
-                            {["SIM", "NAO", "NA"].map((st) => (
-                              <button
-                                type="button"
-                                key={st}
-                                onClick={() => handleResponseChange(item.id, "status", st)}
-                                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                                  responses[item.id]?.status === st
-                                    ? st === "SIM"
-                                      ? "bg-green-600 text-white"
-                                      : st === "NAO"
-                                      ? "bg-red-600 text-white"
-                                      : "bg-gray-600 text-white"
-                                    : "text-gray-600 hover:bg-gray-200"
-                                }`}
-                              >
-                                {st}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Campo complementar se for número ou texto */}
-                          {item.response_type !== "BOOLEAN" && (
-                            <input
-                              type="text"
-                              placeholder={item.response_type === "NUMBER" ? "Ex: 227 V" : "Observação"}
-                              value={responses[item.id]?.value || ""}
-                              onChange={(e) => handleResponseChange(item.id, "value", e.target.value)}
-                              className="px-2 py-1 text-xs border rounded-md w-28 focus:ring-1 focus:ring-blue-500"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-
           {/* Serviços Complementares e Conclusão */}
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Serviços Complementares Executados
@@ -164,7 +90,7 @@ export default function ExecuteServiceOrderModal({
                 rows={2}
                 value={complementaryServices}
                 onChange={(e) => setComplementaryServices(e.target.value)}
-                placeholder="Ex: Realizada a substituição de 12 baterias de 12V 7Ah..."
+                placeholder="Ex: Realizada a substituição de componentes..."
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
             </div>
@@ -177,9 +103,80 @@ export default function ExecuteServiceOrderModal({
                 rows={3}
                 value={conclusions}
                 onChange={(e) => setConclusions(e.target.value)}
-                placeholder="Ex: Realizada inspeção e testes operacionais. Painel apresentando 56 falhas..."
+                placeholder="Ex: Sistema testado e entregue em pleno funcionamento..."
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
+            </div>
+          </div>
+
+          {/* Secção de Assinaturas Digitais */}
+          <div className="border-t pt-6 space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              Assinaturas e Validação de Encerramento
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Assinatura do Cliente */}
+              <div className="space-y-2 border p-4 rounded-xl bg-slate-50/50">
+                <label className="block text-xs font-bold text-slate-700">
+                  ASSINATURA DO RESPONSÁVEL / CLIENTE
+                </label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Nome do Representante do Cliente"
+                  className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white"
+                  required
+                />
+                <div className="border border-slate-300 rounded-lg bg-white relative">
+                  <SignatureCanvas
+                    ref={clientSigRef}
+                    canvasProps={{
+                      className: "w-full h-32 rounded-lg cursor-crosshair"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => clientSigRef.current.clear()}
+                    className="absolute bottom-2 right-2 p-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] flex items-center gap-1"
+                    title="Limpar assinatura"
+                  >
+                    <RotateCcw size={12} /> Limpar
+                  </button>
+                </div>
+              </div>
+
+              {/* Assinatura do Técnico */}
+              <div className="space-y-2 border p-4 rounded-xl bg-slate-50/50">
+                <label className="block text-xs font-bold text-slate-700">
+                  ASSINATURA DO TÉCNICO RESPONSÁVEL
+                </label>
+                <input
+                  type="text"
+                  value={technicianName}
+                  onChange={(e) => setTechnicianName(e.target.value)}
+                  placeholder="Nome do Técnico"
+                  className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white"
+                  required
+                />
+                <div className="border border-slate-300 rounded-lg bg-white relative">
+                  <SignatureCanvas
+                    ref={techSigRef}
+                    canvasProps={{
+                      className: "w-full h-32 rounded-lg cursor-crosshair"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => techSigRef.current.clear()}
+                    className="absolute bottom-2 right-2 p-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] flex items-center gap-1"
+                    title="Limpar assinatura"
+                  >
+                    <RotateCcw size={12} /> Limpar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

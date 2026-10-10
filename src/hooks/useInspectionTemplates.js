@@ -36,10 +36,9 @@ export function useInspectionTemplates() {
   };
 
   // Adicionar Pergunta / Item com criação dinâmica de Categoria se necessário
-  const addItemToTemplate = async ({ templateId, categoryId, newCategoryTitle, label, responseType }) => {
+  const addItemToTemplate = async ({ templateId, categoryId, newCategoryTitle, label, status = "SIM", observation = "" }) => {
     let finalCategoryId = categoryId;
 
-    // Se não selecionou uma categoria existente, cria uma nova
     if (!finalCategoryId && newCategoryTitle) {
       const catRes = await createInspectionCategory({
         template: templateId,
@@ -52,7 +51,8 @@ export function useInspectionTemplates() {
       await createInspectionItem({
         category: finalCategoryId,
         label,
-        response_type: responseType,
+        status,
+        observation,
       });
     }
 

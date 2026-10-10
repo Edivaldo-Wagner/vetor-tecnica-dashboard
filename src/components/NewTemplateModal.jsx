@@ -1,3 +1,4 @@
+// NewTemplateModal.jsx
 import React, { useState } from "react";
 import { X, Plus, Trash2, Loader2, Sparkles, Camera, Image, Upload } from "lucide-react";
 
@@ -105,10 +106,11 @@ export default function NewTemplateModal({
   isOpen,
   onClose,
   onSave = () => {},
-  isLoading
+  isLoading,
+  equipments = []
 }) {
   const [templateName, setTemplateName] = useState("");
-  const [equipmentType, setEquipmentType] = useState("SDAI");
+  const [equipmentType, setEquipmentType] = useState("");
   const [categories, setCategories] = useState([]);
 
   // Estado para controlar as fotografias do relatório
@@ -117,10 +119,25 @@ export default function NewTemplateModal({
 
   if (!isOpen) return null;
 
+  // Função para identificar a chave do catálogo predefinido (SDAI ou BOMBAS)
+  const getCatalogKey = () => {
+    if (PREDEFINED_CATALOG[equipmentType]) return equipmentType;
+
+    const selectedEq = equipments.find((eq) => String(eq.id) === String(equipmentType));
+    const eqName = (selectedEq?.name || equipmentType || "").toUpperCase();
+
+    if (eqName.includes("BOMBA") || eqName.includes("MOTOBOMBA")) {
+      return "BOMBAS";
+    }
+    return "SDAI"; // Padrão
+  };
+
+  const catalogKey = getCatalogKey();
+
   // Carregar Estrutura Completa de Exemplo (Auto-Preenchimento)
   const handleLoadDefaultTemplate = () => {
-    if (PREDEFINED_CATALOG[equipmentType]) {
-      const defaultData = PREDEFINED_CATALOG[equipmentType];
+    const defaultData = PREDEFINED_CATALOG[catalogKey];
+    if (defaultData) {
       const newCategories = defaultData.categories.map((catTitle) => ({
         title: catTitle,
         items: (defaultData.items[catTitle] || []).map((item) => ({ ...item }))
@@ -128,9 +145,9 @@ export default function NewTemplateModal({
 
       setCategories(newCategories);
       if (!templateName) {
-        if (equipmentType === "SDAI") {
+        if (catalogKey === "SDAI") {
           setTemplateName("Checklist SDAI - Sistema de Detecção e Alarme");
-        } else if (equipmentType === "BOMBAS") {
+        } else if (catalogKey === "BOMBAS") {
           setTemplateName("Inspeção Mensal - Casa de Bombas");
         }
       }
@@ -153,7 +170,7 @@ export default function NewTemplateModal({
     const updated = [...categories];
     updated[catIndex].title = value;
 
-    const predefItems = PREDEFINED_CATALOG[equipmentType]?.items[value];
+    const predefItems = PREDEFINED_CATALOG[catalogKey]?.items[value];
     if (predefItems && updated[catIndex].items.length === 1 && updated[catIndex].items[0].label === "") {
       updated[catIndex].items = predefItems.map(item => ({ ...item }));
     }
@@ -236,7 +253,7 @@ export default function NewTemplateModal({
   };
 
   const getSuggestedItems = (catTitle) => {
-    return PREDEFINED_CATALOG[equipmentType]?.items[catTitle] || [];
+    return PREDEFINED_CATALOG[catalogKey]?.items[catTitle] || [];
   };
 
   return (
@@ -272,23 +289,24 @@ export default function NewTemplateModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de Sistema / Equipamento
+                Tipo de Sistema / Equipamento *
               </label>
               <select
-                value={equipmentType}
-                onChange={(e) => {
-                  setEquipmentType(e.target.value);
-                  setCategories([]);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                <option value="SDAI">Sistema de Detecção e Alarme de Incêndio</option>
-                <option value="BOMBAS">Casa de Bombas / Motobombas</option>
-                <option value="SPRINKLERS">Rede de Chuveiros (Sprinklers)</option>
-                <option value="ILUMINACAO">Iluminação de Emergência</option>
-                <option value="EXTINTORES">Extintores de Incêndio</option>
-                <option value="OUTRO">Outro Sistema</option>
-              </select>
+  value={equipmentType}
+  onChange={(e) => {
+    setEquipmentType(e.target.value);
+    setCategories([]);
+  }}
+  required
+  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+>
+  <option value="">Selecione o equipamento...</option>
+  {equipments.map((eq) => (
+    <option key={eq.id} value={eq.name}> {/* Send string name/type */}
+      {eq.name} {eq.location ? `(${eq.location})` : ""}
+    </option>
+  ))}
+</select>
             </div>
           </div>
 
@@ -308,16 +326,14 @@ export default function NewTemplateModal({
             </button>
 
             {/* BOTÃO CARREGAR CHECKLIST PADRÃO */}
-            {PREDEFINED_CATALOG[equipmentType] && (
-              <button
-                type="button"
-                onClick={handleLoadDefaultTemplate}
-                className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold transition-colors border border-blue-200"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                Carregar Checklist Padrão ({equipmentType})
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleLoadDefaultTemplate}
+              className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold transition-colors border border-blue-200"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              Carregar Checklist Padrão ({catalogKey})
+            </button>
           </div>
 
           <hr className="border-gray-100" />
@@ -353,7 +369,7 @@ export default function NewTemplateModal({
                       className="flex-1 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <datalist id={`category-options-${catIndex}`}>
-                      {(PREDEFINED_CATALOG[equipmentType]?.categories || []).map((catTitle, idx) => (
+                      {(PREDEFINED_CATALOG[catalogKey]?.categories || []).map((catTitle, idx) => (
                         <option key={idx} value={catTitle} />
                       ))}
                     </datalist>
@@ -464,9 +480,7 @@ export default function NewTemplateModal({
           </div>
         </form>
 
-        {/* --------------------------------------------------------------------- */}
-        {/* SUB-MODAL DEDICADO: REGISTO / RELATÓRIO FOTOGRÁFICO                   */}
-        {/* --------------------------------------------------------------------- */}
+        {/* SUB-MODAL DEDICADO: REGISTO / RELATÓRIO FOTOGRÁFICO */}
         {isPhotoModalOpen && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">

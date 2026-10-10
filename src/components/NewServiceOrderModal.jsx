@@ -122,7 +122,7 @@ export default function NewServiceOrderModal({
       execution_start: executionStart || null,
       execution_end: executionEnd || null,
       technicians: selectedTechs,
-      order_equipments: selectedEquipments.filter((e) => e.equipment !== ""),
+      order_equipments_input: selectedEquipments.filter((eq) => eq.equipment !== ""),
       status: "aberta"
     });
   };

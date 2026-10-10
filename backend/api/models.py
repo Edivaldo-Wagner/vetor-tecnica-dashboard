@@ -83,7 +83,7 @@ class ServiceOrder(models.Model):
     check_out = models.DateTimeField(null=True, blank=True, verbose_name="Check-out Real")
     
     # Equipa de Técnicos Responsáveis
-    technicians = models.ManyToManyField('TeamMember', blank=True, related_name='service_orders')
+    technicians = models.ManyToManyField(User, blank=True, related_name='service_orders')
     
     # Detalhes do Trabalho
     scope = models.TextField(blank=True, null=True, verbose_name="Escopo do Trabalho")
@@ -161,23 +161,29 @@ class FinancialRecord(models.Model):
 
 class InspectionTemplate(models.Model):
     """
-    Guarda o Modelo Geral de Checklist (Ex: 'SDAI - Sistema de Alarme GST', 'Casa de Bombas')
+    Guarda o Modelo Geral de Checklist (Ex: 'SDAI - Central GT', 'Casa de Bombas')
     """
-    EQUIPMENT_TYPES = [
-        ('SDAI', 'Sistema de Detecção e Alarme de Incêndio'),
-        ('BOMBAS', 'Casa de Bombas / Motobombas'),
-        ('SPRINKLERS', 'Rede de Chuveiros Automáticos (Sprinklers)'),
-        ('ILUMINACAO', 'Iluminação de Emergência'),
-        ('EXTINTORES', 'Extintores de Incêndio'),
-        ('OUTRO', 'Outro Sistema'),
-    ]
-
     name = models.CharField(max_length=255, verbose_name="Nome do Modelo")
-    equipment_type = models.CharField(max_length=50, choices=EQUIPMENT_TYPES, default='SDAI', verbose_name="Tipo de Equipamento")
+    
+    equipment = models.ForeignKey(
+        'Equipment',
+        on_delete=models.CASCADE,
+        related_name='templates',
+        null=True,
+        blank=True,
+        verbose_name="Equipamento Vinculado"
+    )
+    
+    equipment_type = models.CharField(
+        max_length=255, 
+        blank=True,
+        null=True,
+        verbose_name="Tipo / Nome do Equipamento"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.get_equipment_type_display()})"
+        return f"{self.name} ({self.equipment_type or 'Geral'})"
 
 class InspectionCategory(models.Model):
     """
@@ -197,24 +203,25 @@ class InspectionCategory(models.Model):
 
 class InspectionItem(models.Model):
     """
-    A Pergunta ou Verificação Técnica Individual
+    A Pergunta ou Verificação Técnica Individual com seu valor de Status e Medição/Obs.
     """
-    RESPONSE_TYPES = [
-        ('BOOLEAN', 'Sim / Não / N/A (Conforme / Não Conforme)'),
-        ('NUMBER', 'Número / Medição (Volts, PSI, Horímetro)'),
-        ('TEXT', 'Texto Livre / Observação'),
+    STATUS_CHOICES = [
+        ('SIM', 'Sim / Conforme'),
+        ('NÃO', 'Não / Não Conforme'),
+        ('N/A', 'N/A (Não Aplicável)'),
     ]
 
     category = models.ForeignKey(InspectionCategory, related_name='items', on_delete=models.CASCADE)
     label = models.CharField(max_length=255, verbose_name="Pergunta / Item de Inspeção")
-    response_type = models.CharField(max_length=20, choices=RESPONSE_TYPES, default='BOOLEAN')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SIM', verbose_name="Status Padrão")
+    observation = models.CharField(max_length=255, blank=True, null=True, verbose_name="Medição / Observação")
     order = models.PositiveIntegerField(default=0, verbose_name="Ordem")
 
     class Meta:
         ordering = ['order', 'id']
 
     def __str__(self):
-        return f"{self.category.title} -> {self.label}"
+        return f"{self.category.title} -> {self.label} ({self.status})"
 
 class InspectionPhoto(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

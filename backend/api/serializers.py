@@ -67,12 +67,41 @@ class InspectionResponseSerializer(serializers.ModelSerializer):
 class ServiceOrderEquipmentSerializer(serializers.ModelSerializer):
     equipment_name = serializers.ReadOnlyField(source='equipment.name')
     equipment_location = serializers.ReadOnlyField(source='equipment.location')
-    responses = InspectionResponseSerializer(many=True, required=False)
+    template_name = serializers.ReadOnlyField(source='template.name')
+    categories = serializers.SerializerMethodField()
 
     class Meta:
         model = ServiceOrderEquipment
-        fields = ['id', 'equipment', 'equipment_name', 'equipment_location', 'template', 'responses']
+        fields = ['id', 'equipment', 'equipment_name', 'equipment_location', 'template', 'template_name', 'categories']
 
+    def get_categories(self, obj):
+        if not obj.template:
+            return []
+        
+        # Mapeia as respostas já salvas para consulta rápida por item_id
+        responses_map = {
+            resp.item_id: resp for resp in obj.responses.all()
+        }
+
+        categories_data = []
+        for cat in obj.template.categories.all():
+            items_list = []
+            for item in cat.items.all():
+                resp = responses_map.get(item.id)
+                items_list.append({
+                    "id": item.id,
+                    "label": item.label,
+                    "status": resp.status if resp else (item.status or "SIM"),
+                    "observation": resp.value if resp else (item.observation or "")
+                })
+            
+            categories_data.append({
+                "id": cat.id,
+                "title": cat.title,
+                "items": items_list
+            })
+        
+        return categories_data
 
 class ServiceOrderSignatureSerializer(serializers.ModelSerializer):
     class Meta:
@@ -80,45 +109,68 @@ class ServiceOrderSignatureSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ServiceOrderSerializer(serializers.ModelSerializer):
-    technicians = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=False,
-        write_only=True
-    )
-    # Permite receber a lista ao criar (write) E devolver os equipamentos serializados na leitura (read)
-    order_equipments = ServiceOrderEquipmentSerializer(many=True, read_only=True)
+    client_name = serializers.ReadOnlyField(source='client.name')
+    technicians_details = serializers.SerializerMethodField()
     
-    # Campo extra apenas para receber os dados ao criar no POST
+    # Aponta para o User em vez de TeamMember
+    technicians = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=User.objects.all(),
+        required=False
+    )
+    
+    order_equipments = ServiceOrderEquipmentSerializer(many=True, read_only=True)
     order_equipments_input = serializers.JSONField(required=False, write_only=True)
 
     class Meta:
         model = ServiceOrder
         fields = '__all__'
 
-    def create(self, validated_data):
-        technicians_ids = validated_data.pop('technicians', [])
-        # Pega do order_equipments_input ou order_equipments se enviado
-        order_equipments_data = validated_data.pop('order_equipments_input', validated_data.pop('order_equipments', []))
+    def get_technicians_details(self, obj):
+        return [
+            {
+                "id": tech.id, 
+                "name": f"{tech.first_name} {tech.last_name}".strip() or tech.username
+            } 
+            for tech in obj.technicians.all()
+        ]
 
-        # 1. Cria a Ordem de Serviço principal
+    def create(self, validated_data):
+        technicians_list = validated_data.pop('technicians', [])
+        order_equipments_data = validated_data.pop('order_equipments_input', None)
+        if not order_equipments_data:
+            order_equipments_data = validated_data.pop('order_equipments', [])
+
         service_order = ServiceOrder.objects.create(**validated_data)
 
-        # 2. Associa os técnicos/utilizadores válidos
-        if technicians_ids:
-            related_model = ServiceOrder._meta.get_field('technicians').related_model
-            valid_techs = related_model.objects.filter(id__in=technicians_ids)
-            service_order.technicians.set(valid_techs)
+        if technicians_list:
+            service_order.technicians.set(technicians_list)
 
-        # 3. Cria os relacionamentos de Equipamentos e Checklists
         for eq in order_equipments_data:
-            if isinstance(eq, dict) and eq.get('equipment'):
-                ServiceOrderEquipment.objects.create(
-                    service_order=service_order,
-                    equipment_id=eq.get('equipment'),
-                    template_id=eq.get('template') if eq.get('template') else None
-                )
+            if isinstance(eq, dict):
+                equipment_id = eq.get('equipment')
+                template_id = eq.get('template')
+                
+                if equipment_id:
+                    ServiceOrderEquipment.objects.create(
+                        service_order=service_order,
+                        equipment_id=equipment_id,
+                        template_id=template_id if template_id else None
+                    )
 
         return service_order
+
+    def update(self, instance, validated_data):
+        technicians_list = validated_data.pop('technicians', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if technicians_list is not None:
+            instance.technicians.set(technicians_list)
+
+        return instance
 
 class FinancialRecordSerializer(serializers.ModelSerializer):
     client_name = serializers.ReadOnlyField(source='client.name')
@@ -130,7 +182,7 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
 class InspectionItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InspectionItem
-        fields = ['id', 'category', 'label', 'response_type', 'order']
+        fields = ['id', 'category', 'label', 'status', 'observation', 'order']
         extra_kwargs = {'category': {'required': False}}
 
 class InspectionCategorySerializer(serializers.ModelSerializer):
@@ -143,11 +195,29 @@ class InspectionCategorySerializer(serializers.ModelSerializer):
 
 class InspectionTemplateSerializer(serializers.ModelSerializer):
     categories = InspectionCategorySerializer(many=True, required=False)
-    equipment_type_display = serializers.ReadOnlyField(source='get_equipment_type_display')
+    equipment_name = serializers.ReadOnlyField(source='equipment.name')
+    
+    # Aceita uma string simples para o campo equipment_type (sem restrição de choices)
+    equipment_type = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    
+    # Permite passar 'equipment' (ID do equipamento) de forma opcional
+    equipment = serializers.PrimaryKeyRelatedField(
+        queryset=Equipment.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = InspectionTemplate
-        fields = ['id', 'name', 'equipment_type', 'equipment_type_display', 'categories', 'created_at']
+        fields = [
+            'id', 
+            'name', 
+            'equipment', 
+            'equipment_name', 
+            'equipment_type', 
+            'categories', 
+            'created_at'
+        ]
 
     def create(self, validated_data):
         categories_data = validated_data.pop('categories', [])

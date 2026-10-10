@@ -60,7 +60,11 @@ class ClientViewSet(viewsets.ModelViewSet):
     serializer_class = ClientSerializer
 
 class ServiceOrderViewSet(viewsets.ModelViewSet):
-    queryset = ServiceOrder.objects.all().order_by('-created_at')
+    queryset = ServiceOrder.objects.all().prefetch_related(
+        'order_equipments__equipment',
+        'order_equipments__template__categories__items',
+        'order_equipments__responses'
+    ).order_by('-created_at')
     serializer_class = ServiceOrderSerializer
 
     @action(detail=True, methods=['post'], url_path='execute')
@@ -120,13 +124,31 @@ class ServiceOrderViewSet(viewsets.ModelViewSet):
         # 3. Processar Assinatura (se for enviada no payload)
         signature_data = request.data.get('signature')
         if signature_data:
-            ServiceOrderSignature.objects.update_or_create(
+            sig_obj, created = ServiceOrderSignature.objects.update_or_create(
                 service_order=service_order,
                 defaults={
                     'client_name': signature_data.get('client_name', ''),
                     'technician_name': signature_data.get('technician_name', '')
                 }
             )
+            
+            # Processar imagem de assinatura do cliente em Base64
+            client_sig_b64 = signature_data.get('client_signature')
+            if client_sig_b64 and 'data:image' in client_sig_b64:
+                import base64
+                from django.core.files.base import ContentFile
+                format, imgstr = client_sig_b64.split(';base64,')
+                ext = format.split('/')[-1]
+                sig_obj.client_signature.save(f"client_sig_{service_order.id}.{ext}", ContentFile(base64.b64decode(imgstr)), save=True)
+
+            # Processar imagem de assinatura do técnico em Base64
+            tech_sig_b64 = signature_data.get('technician_signature')
+            if tech_sig_b64 and 'data:image' in tech_sig_b64:
+                import base64
+                from django.core.files.base import ContentFile
+                format, imgstr = tech_sig_b64.split(';base64,')
+                ext = format.split('/')[-1]
+                sig_obj.technician_signature.save(f"tech_sig_{service_order.id}.{ext}", ContentFile(base64.b64decode(imgstr)), save=True)
 
         serializer = self.get_serializer(service_order)
         return Response(serializer.data, status=status.HTTP_200_OK)
