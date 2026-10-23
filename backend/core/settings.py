@@ -113,24 +113,24 @@ DATABASE_URL = os.environ.get(
     'postgresql://postgres.iompmlhcxapxhurxhopi:edy123456ABC%40%23@aws-0-eu-west-2.pooler.supabase.com:6543/postgres'
 )
 
-#DATABASES = {
-#    'default': dj_database_url.config(
-#        default=DATABASE_URL,
-#        conn_max_age=600,
-#        ssl_require=True
-#    )
-#}
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vetortecnica_db',
-        'USER': 'postgres',
-        'PASSWORD': 'edy123456',  
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
+
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'vetortecnica_db',
+#        'USER': 'postgres',
+#        'PASSWORD': 'edy123456',  
+#        'HOST': '127.0.0.1',
+#        'PORT': '5432',
+#    }
+#}
 
 
 # Password validation
