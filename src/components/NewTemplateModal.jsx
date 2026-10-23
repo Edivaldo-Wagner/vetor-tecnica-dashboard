@@ -205,7 +205,7 @@ export default function NewTemplateModal({
       id: Date.now() + Math.random(),
       url: URL.createObjectURL(file),
       caption: "",
-      fileName: file.name
+      file: file 
     }));
 
     setPhotos((prev) => [...prev, ...newPhotoEntries]);
@@ -225,7 +225,7 @@ export default function NewTemplateModal({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const payload = {
+    const templatePayload = {
       name: templateName,
       equipment_type: equipmentType,
       categories: categories
@@ -242,14 +242,10 @@ export default function NewTemplateModal({
               order: itemIdx + 1,
             })),
         })),
-      photos: photos.map((p, idx) => ({
-        order: idx + 1,
-        url: p.url,
-        caption: p.caption
-      }))
     };
 
-    onSave(payload);
+    // Passa os dados do template e a lista de fotos separadamente para o onSave
+    onSave(templatePayload, photos);
   };
 
   const getSuggestedItems = (catTitle) => {

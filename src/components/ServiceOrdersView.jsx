@@ -83,7 +83,7 @@ export default function ServiceOrdersView() {
 
   const currentOrdersList = activeTab === "abertas" ? openOrders : completedOrders;
 
-  // Função para exportar o PDF detalhado da Ordem de Serviço
+  // Função para exportar o PDF detalhado da Ordem de Serviço com Relatório Fotográfico
   const handleExportPDF = (os) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -109,7 +109,15 @@ export default function ServiceOrdersView() {
       return os.order_equipments.map((eqItem) => {
         const categories = eqItem.categories || [];
         
-        if (categories.length === 0) {
+        // Procura o template completo na lista global de templates usando o ID ou nome para resgatar as fotos
+        const matchedTemplate = templates.find(
+          (t) => t.id === eqItem.template || t.name === eqItem.template_name
+        );
+        
+        // Recolhe as fotos do template encontrado ou do próprio eqItem se já vier preenchido
+        const photos = eqItem.photos || (matchedTemplate && matchedTemplate.photos) || (eqItem.template && eqItem.template.photos) || [];
+
+        if (categories.length === 0 && photos.length === 0) {
           return `
             <div class="section-title">Equipamento: ${eqItem.equipment_name || eqItem.equipment}</div>
             <div style="text-align: center; padding: 10px; font-style: italic; color: #666; border: 1px solid #000; margin-bottom: 8px;">
@@ -148,9 +156,34 @@ export default function ServiceOrdersView() {
           `;
         }).join("");
 
+        // HTML do Relatório Fotográfico deste Equipamento/Checklist
+        const photosHtml = photos.length > 0 ? `
+          <div class="photo-section-title">Relatório Fotográfico - ${eqItem.equipment_name || "Equipamento"}</div>
+          <table class="photo-grid">
+            ${photos.reduce((rows, photo, index) => {
+              if (index % 2 === 0) rows.push([]);
+              rows[rows.length - 1].push(photo);
+              return rows;
+            }, []).map(row => `
+              <tr>
+                ${row.map(p => `
+                  <td class="photo-cell">
+                    <div class="photo-container">
+                      <img src="${p.image}" class="photo-img" alt="Foto de Inspeção" />
+                    </div>
+                    <div class="photo-caption"><strong>Legenda:</strong> ${p.label || "Sem descrição"}</div>
+                  </td>
+                `).join("")}
+                ${row.length === 1 ? '<td class="photo-cell" style="border: 1.5px solid #000;"></td>' : ''}
+              </tr>
+            `).join("")}
+          </table>
+        ` : "";
+
         return `
           <div class="section-title">Equipamento: ${eqItem.equipment_name || eqItem.equipment}</div>
           ${categoriesHtml}
+          ${photosHtml}
         `;
       }).join("");
     };
@@ -262,6 +295,57 @@ export default function ServiceOrdersView() {
               font-size: 9px;
               margin-bottom: 10px;
               min-height: 25px;
+            }
+
+            /* Estilos para o Relatório Fotográfico */
+            .photo-section-title {
+              font-size: 10.5px;
+              font-weight: bold;
+              text-transform: uppercase;
+              background-color: #333;
+              color: #fff;
+              padding: 4px 6px;
+              margin-top: 10px;
+              margin-bottom: 4px;
+              border: 1.5px solid #000;
+            }
+            .photo-grid {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 10px;
+            }
+            .photo-cell {
+              width: 50%;
+              border: 1.5px solid #000;
+              padding: 6px;
+              vertical-align: top;
+              text-align: center;
+            }
+            .photo-container {
+              width: 100%;
+              height: 150px;
+              background-color: #f9f9f9;
+              border: 1px solid #ccc;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 4px;
+              overflow: hidden;
+            }
+            .photo-img {
+              max-width: 100%;
+              max-height: 150px;
+              object-fit: contain;
+            }
+            .photo-caption {
+              font-size: 9px;
+              font-weight: bold;
+              color: #222;
+              text-align: left;
+              margin-top: 2px;
+              padding: 2px 4px;
+              background: #f0f0f0;
+              border: 1px solid #ddd;
             }
           </style>
         </head>

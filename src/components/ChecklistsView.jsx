@@ -41,190 +41,263 @@ export default function ChecklistsView() {
     setIsItemModalOpen(true);
   };
 
-  // Função para exportar o PDF idêntico à folha de inspeção física
   const handleExportPDF = (tmpl) => {
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Relatório - ${tmpl.name}</title>
-        <style>
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-          body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 10px;
-            color: #000;
-            margin: 0;
-            padding: 0;
-          }
-          .header-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 5px;
-          }
-          .header-table td {
-            border: 1.5px solid #000;
-            padding: 4px 6px;
-            vertical-align: middle;
-          }
-          .title-box {
-            font-weight: bold;
-            text-transform: uppercase;
-          }
-          .title-main {
-            font-size: 13px;
-            margin-bottom: 2px;
-          }
-          .title-sub {
-            font-size: 9px;
-          }
-          .logo-cell {
-            width: 130px;
-            text-align: center;
-            padding: 2px !important;
-          }
-          .logo-img {
-            max-height: 45px;
-            max-width: 120px;
-            object-fit: contain;
-          }
-          .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-          }
-          .info-table td {
-            border: 1.5px solid #000;
-            padding: 4px 5px;
-            font-size: 8.5px;
-          }
-          .bg-gray {
-            background-color: #e5e5e5;
-            font-weight: bold;
-          }
-          .pending-text {
-            color: #666;
-            font-style: italic;
-          }
-          .checklist-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 8px;
-          }
-          .checklist-table td, .checklist-table th {
-            border: 1.5px solid #000;
-            padding: 3px 5px;
-            font-size: 9px;
-          }
-          .cat-header {
-            background-color: #e5e5e5;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 9.5px;
-          }
-          .col-label {
-            width: 60%;
-            text-align: left;
-          }
-          .col-status {
-            width: 12%;
-            text-align: center;
-            font-weight: bold;
-          }
-          .col-obs {
-            width: 28%;
-            text-align: left;
-          }
-        </style>
-      </head>
-      <body>
-        <!-- Cabeçalho Principal -->
-        <table class="header-table">
-          <tr>
-            <td class="title-box">
-              <div class="title-main">${tmpl.equipment_type_display || tmpl.equipment_type || "SISTEMA DE INSPEÇÃO"}</div>
-              <div class="title-sub">${tmpl.name}</div>
-            </td>
-            <td class="logo-cell">
-              <img src="${companyLogo}" class="logo-img" alt="Logo" />
-            </td>
-          </tr>
-        </table>
-
-        <!-- Tabela de Informações Globais da O.S. -->
-        <table class="info-table">
-          <tr>
-            <td class="bg-gray" style="width: 12%;">CLIENTE</td>
-            <td class="pending-text" style="width: 53%;">Aguardando emissão da Ordem de Serviço</td>
-            <td class="bg-gray" style="width: 10%;">OS Nº</td>
-            <td class="pending-text" style="width: 25%;">Pendente de Abertura</td>
-          </tr>
-          <tr>
-            <td class="bg-gray">DATA/HORA</td>
-            <td class="pending-text">Aguardando agendamento</td>
-            <td class="bg-gray">CHECK-IN / OUT</td>
-            <td class="pending-text">Aguardando execução em campo</td>
-          </tr>
-          <tr>
-            <td class="bg-gray">TÉCNICO</td>
-            <td colspan="3" class="pending-text">Aguardando atribuição de equipa técnica</td>
-          </tr>
-        </table>
-
-        <!-- Tabelas de Categorias e Itens -->
-        ${tmpl.categories && tmpl.categories.length > 0 ? tmpl.categories.map((cat) => `
-          <table class="checklist-table">
-            <thead>
-              <tr class="cat-header">
-                <th colspan="3" style="text-align: left;">${cat.title}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${cat.items && cat.items.length > 0 ? cat.items.map((item) => `
-                <tr>
-                  <td class="col-label">${item.label}</td>
-                  <td class="col-status">${item.status || "SIM"}</td>
-                  <td class="col-obs">${item.observation || ""}</td>
-                </tr>
-              `).join("") : `
-                <tr>
-                  <td colspan="3" style="text-align: center; font-style: italic; color: #666;">Nenhum item cadastrado nesta categoria.</td>
-                </tr>
-              `}
-            </tbody>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Relatório - ${tmpl.name}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 10mm;
+            }
+            body {
+              font-family: Arial, Helvetica, sans-serif;
+              font-size: 10px;
+              color: #000;
+              margin: 0;
+              padding: 0;
+            }
+            .header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 5px;
+            }
+            .header-table td {
+              border: 1.5px solid #000;
+              padding: 4px 6px;
+              vertical-align: middle;
+            }
+            .title-box {
+              font-weight: bold;
+              text-transform: uppercase;
+            }
+            .title-main {
+              font-size: 13px;
+              margin-bottom: 2px;
+            }
+            .title-sub {
+              font-size: 9px;
+            }
+            .logo-cell {
+              width: 130px;
+              text-align: center;
+              padding: 2px !important;
+            }
+            .logo-img {
+              max-height: 45px;
+              max-width: 120px;
+              object-fit: contain;
+            }
+            .info-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 10px;
+            }
+            .info-table td {
+              border: 1.5px solid #000;
+              padding: 4px 5px;
+              font-size: 8.5px;
+            }
+            .bg-gray {
+              background-color: #e5e5e5;
+              font-weight: bold;
+            }
+            .pending-text {
+              color: #666;
+              font-style: italic;
+            }
+            .checklist-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 8px;
+            }
+            .checklist-table td, .checklist-table th {
+              border: 1.5px solid #000;
+              padding: 3px 5px;
+              font-size: 9px;
+            }
+            .cat-header {
+              background-color: #e5e5e5;
+              font-weight: bold;
+              text-transform: uppercase;
+              font-size: 9.5px;
+            }
+            .col-label {
+              width: 60%;
+              text-align: left;
+            }
+            .col-status {
+              width: 12%;
+              text-align: center;
+              font-weight: bold;
+            }
+            .col-obs {
+              width: 28%;
+              text-align: left;
+            }
+            
+            /* Estilos para o Relatório Fotográfico no PDF */
+            .photo-section-title {
+              font-size: 11px;
+              font-weight: bold;
+              text-transform: uppercase;
+              background-color: #333;
+              color: #fff;
+              padding: 5px 8px;
+              margin-top: 15px;
+              margin-bottom: 8px;
+              border: 1.5px solid #000;
+            }
+            .photo-grid {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .photo-cell {
+              width: 50%;
+              border: 1.5px solid #000;
+              padding: 6px;
+              vertical-align: top;
+              text-align: center;
+            }
+            .photo-container {
+              width: 100%;
+              height: 160px;
+              background-color: #f9f9f9;
+              border: 1px solid #ccc;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 5px;
+              overflow: hidden;
+            }
+            .photo-img {
+              max-width: 100%;
+              max-height: 160px;
+              object-fit: contain;
+            }
+            .photo-caption {
+              font-size: 9px;
+              font-weight: bold;
+              color: #222;
+              text-align: left;
+              margin-top: 4px;
+              padding: 2px 4px;
+              background: #f0f0f0;
+              border: 1px solid #ddd;
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Cabeçalho Principal -->
+          <table class="header-table">
+            <tr>
+              <td class="title-box">
+                <div class="title-main">${tmpl.equipment_type_display || tmpl.equipment_type || "SISTEMA DE INSPEÇÃO"}</div>
+                <div class="title-sub">${tmpl.name}</div>
+              </td>
+              <td class="logo-cell">
+                <img src="${companyLogo}" class="logo-img" alt="Logo" />
+              </td>
+            </tr>
           </table>
-        `).join("") : `
-          <div style="text-align: center; padding: 20px; font-style: italic; color: #666;">Nenhuma categoria associada a este modelo de checklist.</div>
-        `}
 
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-    </html>
-  `;
+          <!-- Tabela de Informações Globais da O.S. -->
+          <table class="info-table">
+            <tr>
+              <td class="bg-gray" style="width: 12%;">CLIENTE</td>
+              <td class="pending-text" style="width: 53%;">Aguardando emissão da Ordem de Serviço</td>
+              <td class="bg-gray" style="width: 10%;">OS Nº</td>
+              <td class="pending-text" style="width: 25%;">Pendente de Abertura</td>
+            </tr>
+            <tr>
+              <td class="bg-gray">DATA/HORA</td>
+              <td class="pending-text">Aguardando agendamento</td>
+              <td class="bg-gray">CHECK-IN / OUT</td>
+              <td class="pending-text">Aguardando execução em campo</td>
+            </tr>
+            <tr>
+              <td class="bg-gray">TÉCNICO</td>
+              <td colspan="3" class="pending-text">Aguardando atribuição de equipa técnica</td>
+            </tr>
+          </table>
 
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
-};
+          <!-- Tabelas de Categorias e Itens -->
+          ${tmpl.categories && tmpl.categories.length > 0 ? tmpl.categories.map((cat) => `
+            <table class="checklist-table">
+              <thead>
+                <tr class="cat-header">
+                  <th colspan="3" style="text-align: left;">${cat.title}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${cat.items && cat.items.length > 0 ? cat.items.map((item) => `
+                  <tr>
+                    <td class="col-label">${item.label}</td>
+                    <td class="col-status">${item.status || "SIM"}</td>
+                    <td class="col-obs">${item.observation || ""}</td>
+                  </tr>
+                `).join("") : `
+                  <tr>
+                    <td colspan="3" style="text-align: center; font-style: italic; color: #666;">Nenhum item cadastrado nesta categoria.</td>
+                  </tr>
+                `}
+              </tbody>
+            </table>
+          `).join("") : `
+            <div style="text-align: center; padding: 20px; font-style: italic; color: #666;">Nenhuma categoria associada a este modelo de checklist.</div>
+          `}
+
+          <!-- Relatório Fotográfico (Se houver fotos) -->
+          ${tmpl.photos && tmpl.photos.length > 0 ? `
+            <div class="photo-section-title">Relatório Fotográfico</div>
+            <table class="photo-grid">
+              ${tmpl.photos.reduce((rows, photo, index) => {
+                if (index % 2 === 0) rows.push([]);
+                rows[rows.length - 1].push(photo);
+                return rows;
+              }, []).map(row => `
+                <tr>
+                  ${row.map(p => `
+                    <td class="photo-cell">
+                      <div class="photo-container">
+                        <img src="${p.image}" class="photo-img" alt="Foto de Inspeção" />
+                      </div>
+                      <div class="photo-caption"><strong>Legenda:</strong> ${p.label || "Sem descrição"}</div>
+                    </td>
+                  `).join("")}
+                  ${row.length === 1 ? '<td class="photo-cell" style="border: 1.5px solid #000;"></td>' : ''}
+                </tr>
+              `).join("")}
+            </table>
+          ` : ""}
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   // Função para criar novo modelo
-  const handleSaveTemplate = async (payload) => {
+  const handleSaveTemplate = async (templatePayload, photosList) => {
     try {
       setIsSaving(true);
-      await addTemplate(payload);
+      await addTemplate(templatePayload, photosList); // Repassa as fotos para o hook
       setIsTemplateModalOpen(false);
     } catch (err) {
       console.error("Erro ao criar modelo:", err);
-      alert("Erro ao salvar o modelo de checklist.");
+      alert("Erro ao salvar o modelo de checklist e fotografias.");
     } finally {
       setIsSaving(false);
     }

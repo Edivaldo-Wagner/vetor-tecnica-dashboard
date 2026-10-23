@@ -53,7 +53,8 @@ class ClientSerializer(serializers.ModelSerializer):
 class InspectionPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = InspectionPhoto
-        fields = ['id', 'service_order', 'label', 'image', 'created_at']
+        fields = ['id', 'template', 'label', 'image', 'created_at']
+        extra_kwargs = {'template': {'required': False}}
 
 class InspectionResponseSerializer(serializers.ModelSerializer):
     item_label = serializers.ReadOnlyField(source='item.label')
@@ -195,12 +196,9 @@ class InspectionCategorySerializer(serializers.ModelSerializer):
 
 class InspectionTemplateSerializer(serializers.ModelSerializer):
     categories = InspectionCategorySerializer(many=True, required=False)
+    photos = InspectionPhotoSerializer(many=True, required=False) # Adiciona as fotos do modelo
     equipment_name = serializers.ReadOnlyField(source='equipment.name')
-    
-    # Aceita uma string simples para o campo equipment_type (sem restrição de choices)
     equipment_type = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
-    
-    # Permite passar 'equipment' (ID do equipamento) de forma opcional
     equipment = serializers.PrimaryKeyRelatedField(
         queryset=Equipment.objects.all(),
         required=False,
@@ -216,18 +214,26 @@ class InspectionTemplateSerializer(serializers.ModelSerializer):
             'equipment_name', 
             'equipment_type', 
             'categories', 
+            'photos',
             'created_at'
         ]
 
     def create(self, validated_data):
         categories_data = validated_data.pop('categories', [])
+        photos_data = validated_data.pop('photos', [])
+        
         template = InspectionTemplate.objects.create(**validated_data)
 
+        # Salva as categorias e itens
         for cat_data in categories_data:
             items_data = cat_data.pop('items', [])
             category = InspectionCategory.objects.create(template=template, **cat_data)
             for item_data in items_data:
                 InspectionItem.objects.create(category=category, **item_data)
+
+        # Salva as fotografias padrão do template
+        for photo_data in photos_data:
+            InspectionPhoto.objects.create(template=template, **photo_data)
 
         return template
 

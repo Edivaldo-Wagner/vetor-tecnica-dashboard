@@ -1,3 +1,4 @@
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets, parsers, generics, status
 from .permissions import IsAdminUserCustom
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -24,7 +25,13 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUserCustom]
+    
+    def get_permissions(self):
+        # Permite que qualquer utilizador autenticado veja a lista (GET),
+        # mas exige o perfil de admin para criar, atualizar ou apagar.
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated()]
+        return [IsAdminUserCustom()]
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod

@@ -225,8 +225,8 @@ class InspectionItem(models.Model):
 
 class InspectionPhoto(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    service_order = models.ForeignKey(
-        ServiceOrder, 
+    template = models.ForeignKey(
+        'InspectionTemplate', 
         on_delete=models.CASCADE, 
         related_name='photos',
         null=True, blank=True

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { 
+import api, {  
   getInspectionTemplates, 
   createInspectionTemplate, 
   createInspectionCategory, 
@@ -29,9 +29,38 @@ export function useInspectionTemplates() {
   }, [fetchTemplates]);
 
   // Adicionar Novo Modelo Geral (Template)
-  const addTemplate = async (templateData) => {
-    const res = await createInspectionTemplate(templateData);
-    await fetchTemplates(); // Atualiza a lista completa com os novos relacionamentos
+  const addTemplate = async (templateData, photosList = []) => {
+    // 1. Cria o modelo de checklist principal (sem as fotos no payload inicial)
+    const payload = {
+      name: templateData.name,
+      equipment_type: templateData.equipment_type,
+      equipment: templateData.equipment || null,
+      categories: templateData.categories || []
+    };
+
+    const res = await createInspectionTemplate(payload);
+    const newTemplateId = res.data.id;
+
+    // 2. Se existirem fotografias anexadas, faz o upload de cada uma vinculada ao novo template
+    if (photosList && photosList.length > 0) {
+      for (const photo of photosList) {
+        const formData = new FormData();
+        formData.append("template", newTemplateId); // Vincula ao template_id criado
+        formData.append("label", photo.caption || "Foto do Modelo"); // Envia a legenda digitada como 'label'
+        
+        if (photo.file) {
+          formData.append("image", photo.file); // O ficheiro físico real
+        }
+
+        await api.post("inspection-photos/", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+    }
+
+    await fetchTemplates(); // Atualiza a lista completa
     return res.data;
   };
 

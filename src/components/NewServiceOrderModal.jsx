@@ -50,6 +50,8 @@ export default function NewServiceOrderModal({
     }
   }, [isOpen]);
 
+
+
   const handleClientChange = (clientId) => {
     setSelectedClient(clientId);
     setSelectedEquipments([]);
