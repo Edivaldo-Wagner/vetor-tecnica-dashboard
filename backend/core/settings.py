@@ -21,10 +21,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+ZAPSIGN_API_TOKEN = "170fbbbd-128c-4e98-baa4-34b7e33d5bb5804a1c32-ccf6-4d50-983f-5c13feb6b837"
+ZAPSIGN_API_URL = "https://sandbox.api.zapsign.com.br/api/v1"
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-&uiw-qzkyc0u&&b#vw&=s1w9i$16@$cl-4)cq@$c^$n4$p^09*'
 
 # SECURITY WARNING: don't run with debug turned on in production!

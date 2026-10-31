@@ -15,31 +15,32 @@ import Login from "./components/Login.jsx";
 import { AuthContext } from "./authContext/AuthContext.jsx";
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState("clientes");
   const { user } = useContext(AuthContext);
 
-  // Define a aba inicial com base nas permissões apenas quando o utilizador entra
-  useEffect(() => {
-    if (user) {
-      if (user.role === "ADMIN" || user.is_superuser) {
-        setCurrentTab("admin");
-      } else {
-        setCurrentTab("clientes");
-      }
-    }
-  }, [user]);
+  // Inicializa o estado lendo do sessionStorage ou definindo a padrão por permissão
+  const [currentTab, setCurrentTab] = useState(() => {
+    const savedTab = sessionStorage.getItem("@vetortecnica:currentTab");
+    if (savedTab) return savedTab;
+    return (user?.role === "ADMIN" || user?.is_superuser) ? "admin" : "clientes";
+  });
+
+  // Sempre que a aba mudar, guarda no sessionStorage
+  const handleSetTab = (tab) => {
+    setCurrentTab(tab);
+    sessionStorage.setItem("@vetortecnica:currentTab", tab);
+  };
 
   if (!user) {
     return <Login />;
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
+    <div className="flex h-screen w-screen bg-slate-50 font-sans overflow-hidden">
       {/* Menu Lateral */}
-      <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      <Sidebar currentTab={currentTab} setCurrentTab={handleSetTab} />
 
       {/* Conteúdo Principal */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+      <main className="flex-1 h-screen p-6 md:p-8 overflow-y-auto">
         {/* Renderiza o Header e Cards APENAS fora da aba de Administração */}
         {currentTab !== "admin" && (
           <>

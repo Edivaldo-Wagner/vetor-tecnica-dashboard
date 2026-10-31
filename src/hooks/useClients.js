@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getClients, createClient } from "../services/api";
+import { getClients, createClient, updateClient, deleteClient } from "../services/api";
 
 export function useClients() {
   const [clients, setClients] = useState([]);
@@ -29,5 +29,16 @@ export function useClients() {
     return res.data;
   };
 
-  return { clients, loading, error, addClient, refreshClients: fetchClients };
+  const editClient = async (id, clientData) => {
+    const res = await updateClient(id, clientData);
+    setClients((prev) => prev.map((client) => (client.id === id ? res.data : client)));
+    return res.data;
+  };
+
+  const removeClient = async (id) => {
+    await deleteClient(id);
+    setClients((prev) => prev.filter((client) => client.id !== id));
+  };
+
+  return { clients, loading, error, addClient, editClient, removeClient, refreshClients: fetchClients };
 }

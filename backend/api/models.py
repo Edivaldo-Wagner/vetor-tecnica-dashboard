@@ -35,7 +35,7 @@ class Client(models.Model):
     name = models.CharField(max_length=255)                  # Nome da empresa
     contract_code = models.CharField(max_length=100, blank=True, null=True) # Código do contrato
     access_email = models.EmailField(blank=True, null=True)   # E-mail de acesso
-    initial_password = models.CharField(max_length=255, blank=True, null=True) # Senha inicial
+    #initial_password = models.CharField(max_length=255, blank=True, null=True) # Senha inicial
     plan = models.CharField(max_length=50, choices=PLAN_CHOICES, default='Essencial')
     monthly_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # Valor mensal (R$)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ativo')
@@ -89,6 +89,10 @@ class ServiceOrder(models.Model):
     scope = models.TextField(blank=True, null=True, verbose_name="Escopo do Trabalho")
     complementary_services = models.TextField(blank=True, null=True, verbose_name="Serviços Complementares")
     conclusions = models.TextField(blank=True, null=True, verbose_name="Conclusões / Observações Técnicas")
+
+    zapsign_doc_token = models.CharField(max_length=100, blank=True, null=True, verbose_name="Token do Documento ZapSign")
+    client_sign_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="Link de Assinatura do Cliente")
+    is_zapsign_signed = models.BooleanField(default=False, verbose_name="Assinado via ZapSign")
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aberta')
     created_at = models.DateTimeField(auto_now_add=True)

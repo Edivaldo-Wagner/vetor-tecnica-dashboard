@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getEquipments, createEquipment } from "../services/api";
+import { getEquipments, createEquipment, updateEquipment, deleteEquipment } from "../services/api";
 
 export function useEquipments() {
   const [equipments, setEquipments] = useState([]);
@@ -29,11 +29,24 @@ export function useEquipments() {
     return res.data;
   };
 
+  const editEquipment = async (id, equipmentData) => {
+    const res = await updateEquipment(id, equipmentData);
+    setEquipments((prev) => prev.map((eq) => (eq.id === id ? res.data : eq)));
+    return res.data;
+  };
+
+  const removeEquipment = async (id) => {
+    await deleteEquipment(id);
+    setEquipments((prev) => prev.filter((eq) => eq.id !== id));
+  };
+
   return {
     equipments,
     loading,
     error,
     addEquipment,
+    editEquipment,
+    removeEquipment,
     refreshEquipments: fetchEquipments,
   };
 }

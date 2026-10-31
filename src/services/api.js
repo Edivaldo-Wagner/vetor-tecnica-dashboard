@@ -21,6 +21,8 @@ export const getUsers = () => api.get("users/");
 // Clientes
 export const getClients = () => api.get("clients/");
 export const createClient = (data) => api.post("clients/", data);
+export const updateClient = (id, data) => api.put(`clients/${id}/`, data); 
+export const deleteClient = (id) => api.delete(`clients/${id}/`);
 
 // Membros da Equipa / Técnicos
 export const getTeamMembers = () => api.get("team-members/");
@@ -45,11 +47,14 @@ export const getEquipments = (clientId = null) => {
   return api.get(url);
 };
 export const createEquipment = (data) => api.post("equipments/", data);
+export const updateEquipment = (id, data) => api.put(`equipments/${id}/`, data);
 export const deleteEquipment = (id) => api.delete(`equipments/${id}/`);
 
 // Modelos de Inspeção & Checklists
 export const getInspectionTemplates = () => api.get("inspection-templates/");
 export const createInspectionTemplate = (data) => api.post("inspection-templates/", data);
+export const updateInspectionTemplate = (id, data) => api.put(`inspection-templates/${id}/`, data); 
+export const deleteInspectionTemplate = (id) => api.delete(`inspection-templates/${id}/`);    
 
 export const getInspectionCategories = () => api.get("inspection-categories/");
 export const createInspectionCategory = (data) => api.post("inspection-categories/", data);
@@ -64,5 +69,8 @@ export const saveOrderExecution = (data) =>
 
 export const updateServiceOrderStatus = (id, status) =>
   api.patch(`service-orders/${id}/`, { status });
+
+// Sincronizar assinatura da ZapSign para a O.S.
+export const syncOrderSignature = (orderId) => api.get(`service-orders/${orderId}/sync-signature/`);
 
 export default api;

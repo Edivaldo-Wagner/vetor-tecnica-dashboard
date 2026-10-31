@@ -1,6 +1,6 @@
 // ChecklistsView.jsx
 import React, { useState, useEffect } from "react";
-import { ClipboardCheck, Plus, ChevronDown, ChevronRight, ListPlus, Loader2, FileText } from "lucide-react";
+import { ClipboardCheck, Plus, ChevronDown, ChevronRight, ListPlus, Edit2, Trash2, Loader2, FileText } from "lucide-react";
 import { getEquipments } from "../services/api";
 import { useInspectionTemplates } from "../hooks/useInspectionTemplates";
 import NewTemplateModal from "../components/NewTemplateModal";
@@ -8,11 +8,12 @@ import NewInspectionItemModal from "../components/NewInspectionItemModal";
 import companyLogo from "../assets/logo.jpg";
 
 export default function ChecklistsView() {
-  const { templates, loading, error, addTemplate, addItemToTemplate } = useInspectionTemplates();
+  const { templates, loading, error, addTemplate, editTemplate, removeTemplate, addItemToTemplate } = useInspectionTemplates();
   const [expandedTemplates, setExpandedTemplates] = useState([]);
   const [equipments, setEquipments] = useState([]);
 
   // Modais
+  const [templateToEdit, setTemplateToEdit] = useState(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -29,6 +30,29 @@ export default function ChecklistsView() {
     };
     fetchEquipments();
   }, []);
+
+  const handleOpenCreate = () => {
+    setTemplateToEdit(null);
+    setIsTemplateModalOpen(true);
+  };
+
+  const handleOpenEdit = (tmpl, e) => {
+    e.stopPropagation();
+    setTemplateToEdit(tmpl);
+    setIsTemplateModalOpen(true);
+  };
+
+  const handleDeleteTemplate = async (tmpl, e) => {
+    e.stopPropagation();
+    if (window.confirm(`Tem certeza que deseja apagar o modelo "${tmpl.name}"?`)) {
+      try {
+        await removeTemplate(tmpl.id);
+        window.location.reload();
+      } catch (err) {
+        alert("Erro ao eliminar o modelo de checklist.");
+      }
+    }
+  };
 
   const toggleExpand = (id) => {
     setExpandedTemplates((prev) =>
@@ -166,19 +190,19 @@ export default function ChecklistsView() {
             }
             .photo-container {
               width: 100%;
-              height: 160px;
+              height: 400px; /* Altura fixa rigorosa para todas as caixas de foto */
               background-color: #f9f9f9;
               border: 1px solid #ccc;
               display: flex;
               align-items: center;
               justify-content: center;
-              margin-bottom: 5px;
+              margin-bottom: 4px;
               overflow: hidden;
             }
             .photo-img {
-              max-width: 100%;
-              max-height: 160px;
-              object-fit: contain;
+              width: 100%;
+              height: 100%;
+              object-fit: cover; /* Preenche a caixa uniformemente mantendo padrão idêntico */
             }
             .photo-caption {
               font-size: 9px;
@@ -267,7 +291,7 @@ export default function ChecklistsView() {
                       <div class="photo-container">
                         <img src="${p.image}" class="photo-img" alt="Foto de Inspeção" />
                       </div>
-                      <div class="photo-caption"><strong>Legenda:</strong> ${p.label || "Sem descrição"}</div>
+                      <div class="photo-caption">${p.label || "Sem descrição"}</div>
                     </td>
                   `).join("")}
                   ${row.length === 1 ? '<td class="photo-cell" style="border: 1.5px solid #000;"></td>' : ''}
@@ -293,11 +317,17 @@ export default function ChecklistsView() {
   const handleSaveTemplate = async (templatePayload, photosList) => {
     try {
       setIsSaving(true);
-      await addTemplate(templatePayload, photosList); // Repassa as fotos para o hook
+      if (templateToEdit) {
+        await editTemplate(templateToEdit.id, templatePayload);
+      } else {
+        await addTemplate(templatePayload, photosList);
+      }
       setIsTemplateModalOpen(false);
+      setTemplateToEdit(null);
+      window.location.reload();
     } catch (err) {
-      console.error("Erro ao criar modelo:", err);
-      alert("Erro ao salvar o modelo de checklist e fotografias.");
+      console.error("Erro ao guardar modelo:", err);
+      alert("Ocorreu um erro ao guardar o modelo de checklist.");
     } finally {
       setIsSaving(false);
     }
@@ -310,6 +340,7 @@ export default function ChecklistsView() {
       await addItemToTemplate(payload);
       setIsItemModalOpen(false);
       setSelectedTemplate(null);
+      window.location.reload();
     } catch (err) {
       console.error("Erro ao adicionar item:", err);
       alert("Erro ao salvar o item de inspeção.");
@@ -398,6 +429,22 @@ export default function ChecklistsView() {
                         Exportar PDF
                       </button>
 
+                      <button
+                          onClick={(e) => handleOpenEdit(tmpl, e)}
+                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          title="Editar Modelo"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+
+                        {/* Botão Apagar */}
+                        <button
+                          onClick={(e) => handleDeleteTemplate(tmpl, e)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Apagar Modelo"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       {/* Botão Adicionar Item 
                       <button
                         onClick={(e) => {
@@ -472,6 +519,7 @@ export default function ChecklistsView() {
         onSave={handleSaveTemplate}
         isLoading={isSaving}
         equipments={equipments}
+        templateToEdit={templateToEdit}
       />
 
       {selectedTemplate && (

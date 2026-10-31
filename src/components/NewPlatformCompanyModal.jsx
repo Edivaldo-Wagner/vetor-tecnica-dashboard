@@ -24,7 +24,8 @@ export default function NewPlatformCompanyModal({ isOpen, onClose, onSubmit }) {
     setSaving(true);
     try {
       await onSubmit(formData);
-      onClose();
+      //onClose();
+      window.location.reload();
     } catch (error) {
       console.error("Erro ao cadastrar empresa:", error);
       alert("Ocorreu um erro ao guardar a empresa.");

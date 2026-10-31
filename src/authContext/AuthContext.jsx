@@ -62,6 +62,8 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('@vetortecnica:currentTab');
+    sessionStorage.removeItem('@vetortecnica:os_activeTab');
   };
 
   return (

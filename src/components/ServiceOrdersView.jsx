@@ -21,7 +21,9 @@ export default function ServiceOrdersView() {
   const [technicians, setTechnicians] = useState([]);
   
   // Estado para controlar a aba ativa: "abertas" ou "concluidas"
-  const [activeTab, setActiveTab] = useState("abertas");
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem("@vetortecnica:os_activeTab") || "abertas";
+  });
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isExecuteOpen, setIsExecuteOpen] = useState(false);
@@ -51,12 +53,18 @@ export default function ServiceOrdersView() {
     }
   };
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    sessionStorage.setItem("@vetortecnica:os_activeTab", tab);
+  };
+
   const handleCreateOrder = async (orderData) => {
     setIsLoading(true);
     try {
       await createServiceOrder(orderData);
       setIsNewOpen(false);
       loadData();
+      window.location.reload();
     } catch (error) {
       console.error("Erro ao criar Ordem de Serviço:", error);
     } finally {
@@ -67,9 +75,9 @@ export default function ServiceOrdersView() {
   const handleSaveExecution = async (executionData) => {
     setIsLoading(true);
     try {
-      await saveOrderExecution(executionData);
-      setIsExecuteOpen(false);
+      const response = await saveOrderExecution(executionData);
       loadData();
+      return response; // Agora sim, retorna a resposta corretamente guardada
     } catch (error) {
       console.error("Erro ao salvar execução:", error);
     } finally {
@@ -83,8 +91,20 @@ export default function ServiceOrdersView() {
 
   const currentOrdersList = activeTab === "abertas" ? openOrders : completedOrders;
 
-  // Função para exportar o PDF detalhado da Ordem de Serviço com Relatório Fotográfico
-  const handleExportPDF = (os) => {
+  // Função para exportar o PDF detalhado da Ordem de Serviço com o Bloco de Assinaturas (Técnico e Cliente)
+  const handleExportPDF = async (osItem) => {
+    let os = { ...osItem };
+    try {
+      const resSync = await api.get(`service-orders/${os.id}/sync-signature/`);
+      console.log("Sync SUCESSO:", resSync.data);
+      
+      const resOs = await api.get(`service-orders/${os.id}/`);
+      os = resOs.data;
+      console.log("Dados atualizados da O.S.:", os);
+    } catch (err) {
+      console.log("Erro detalhado no sync-signature:", err.response?.data || err.message);
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -109,12 +129,10 @@ export default function ServiceOrdersView() {
       return os.order_equipments.map((eqItem) => {
         const categories = eqItem.categories || [];
         
-        // Procura o template completo na lista global de templates usando o ID ou nome para resgatar as fotos
         const matchedTemplate = templates.find(
           (t) => t.id === eqItem.template || t.name === eqItem.template_name
         );
         
-        // Recolhe as fotos do template encontrado ou do próprio eqItem se já vier preenchido
         const photos = eqItem.photos || (matchedTemplate && matchedTemplate.photos) || (eqItem.template && eqItem.template.photos) || [];
 
         if (categories.length === 0 && photos.length === 0) {
@@ -156,7 +174,6 @@ export default function ServiceOrdersView() {
           `;
         }).join("");
 
-        // HTML do Relatório Fotográfico deste Equipamento/Checklist
         const photosHtml = photos.length > 0 ? `
           <div class="photo-section-title">Relatório Fotográfico - ${eqItem.equipment_name || "Equipamento"}</div>
           <table class="photo-grid">
@@ -171,7 +188,7 @@ export default function ServiceOrdersView() {
                     <div class="photo-container">
                       <img src="${p.image}" class="photo-img" alt="Foto de Inspeção" />
                     </div>
-                    <div class="photo-caption"><strong>Legenda:</strong> ${p.label || "Sem descrição"}</div>
+                    <div class="photo-caption">${p.label || "Sem descrição"}</div>
                   </td>
                 `).join("")}
                 ${row.length === 1 ? '<td class="photo-cell" style="border: 1.5px solid #000;"></td>' : ''}
@@ -296,8 +313,6 @@ export default function ServiceOrdersView() {
               margin-bottom: 10px;
               min-height: 25px;
             }
-
-            /* Estilos para o Relatório Fotográfico */
             .photo-section-title {
               font-size: 10.5px;
               font-weight: bold;
@@ -313,6 +328,7 @@ export default function ServiceOrdersView() {
               width: 100%;
               border-collapse: collapse;
               margin-bottom: 10px;
+              table-layout: fixed;
             }
             .photo-cell {
               width: 50%;
@@ -323,7 +339,7 @@ export default function ServiceOrdersView() {
             }
             .photo-container {
               width: 100%;
-              height: 150px;
+              height: 400px;
               background-color: #f9f9f9;
               border: 1px solid #ccc;
               display: flex;
@@ -333,9 +349,9 @@ export default function ServiceOrdersView() {
               overflow: hidden;
             }
             .photo-img {
-              max-width: 100%;
-              max-height: 150px;
-              object-fit: contain;
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
             }
             .photo-caption {
               font-size: 9px;
@@ -346,6 +362,44 @@ export default function ServiceOrdersView() {
               padding: 2px 4px;
               background: #f0f0f0;
               border: 1px solid #ddd;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .signature-section {
+              margin-top: 20px;
+              page-break-inside: avoid;
+            }
+            .signature-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 5px;
+            }
+            .signature-cell {
+              width: 50%;
+              border: 1.5px solid #000;
+              padding: 10px;
+              text-align: center;
+              vertical-align: bottom;
+            }
+            .signature-img-box {
+              height: 60px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 5px;
+            }
+            .signature-img {
+              max-height: 50px;
+              max-width: 180px;
+              object-fit: contain;
+            }
+            .signature-line {
+              border-top: 1px solid #000;
+              margin-top: 5px;
+              padding-top: 4px;
+              font-weight: bold;
+              font-size: 9px;
             }
           </style>
         </head>
@@ -393,6 +447,55 @@ export default function ServiceOrdersView() {
             <div class="text-box">${os.conclusions}</div>
           ` : ""}
 
+          <!-- BLOCO DE ASSINATURAS NO PDF -->
+          <div class="signature-section">
+            <div class="section-title">Assinaturas e Validação</div>
+            <table class="signature-table">
+              <tr>
+                <td class="signature-cell">
+                  <div class="signature-img-box">
+                    <img src="/src/assets/assign-main.jpg" class="signature-img" alt="Assinatura Técnico" onerror="this.style.display='none'" />
+                  </div>
+                  <div class="signature-line">
+                    Guilherme C. Junior<br/>
+                    <span style="font-weight: normal; font-size: 8px;">Técnico Responsável</span>
+                  </div>
+                </td>
+                <td class="signature-cell">
+                  <div class="signature-img-box">
+                    ${os.signature_details && os.signature_details.client_signature ? `
+                      <img src="${os.signature_details.client_signature}" class="signature-img" alt="Assinatura Cliente" />
+                    ` : `
+                      <div style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 4px 10px;
+                        background-color: #fef2f2;
+                        color: #dc2626;
+                        border: 1px solid #fecaca;
+                        border-radius: 9999px;
+                        font-size: 10px;
+                        font-weight: 600;
+                        font-family: system-ui, -apple-system, sans-serif;
+                      ">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span>Ainda não assinado pelo cliente</span>
+                      </div>
+                    `}
+                  </div>
+                  <div class="signature-line">
+                    ${os.signature_details?.client_name || os.client_name || "Cliente / Responsável"}<br/>
+                    <span style="font-weight: normal; font-size: 8px;">Representante do Cliente</span>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+
           <script>
             window.onload = function() {
               window.print();
@@ -425,7 +528,7 @@ export default function ServiceOrdersView() {
       {/* Abas Superiores (Pills Modernas) para Alternar o Status */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
         <button
-          onClick={() => setActiveTab("abertas")}
+          onClick={() => handleTabChange("abertas")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
             activeTab === "abertas"
               ? "bg-slate-900 text-white shadow-sm"
@@ -442,7 +545,7 @@ export default function ServiceOrdersView() {
         </button>
 
         <button
-          onClick={() => setActiveTab("concluidas")}
+          onClick={() => handleTabChange("concluidas")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
             activeTab === "concluidas"
               ? "bg-slate-900 text-white shadow-sm"

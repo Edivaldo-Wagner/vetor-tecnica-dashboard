@@ -112,6 +112,7 @@ class ServiceOrderSignatureSerializer(serializers.ModelSerializer):
 class ServiceOrderSerializer(serializers.ModelSerializer):
     client_name = serializers.ReadOnlyField(source='client.name')
     technicians_details = serializers.SerializerMethodField()
+    signature_details = serializers.SerializerMethodField()
     
     # Aponta para o User em vez de TeamMember
     technicians = serializers.PrimaryKeyRelatedField(
@@ -135,6 +136,21 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
             } 
             for tech in obj.technicians.all()
         ]
+
+    def get_signature_details(self, obj):
+        sig = ServiceOrderSignature.objects.filter(service_order=obj).first()
+        if sig:
+            request = self.context.get('request')
+            client_sig_url = sig.client_signature.url if sig.client_signature else None
+            if client_sig_url and request:
+                client_sig_url = request.build_absolute_uri(client_sig_url)
+            
+            return {
+                "client_name": sig.client_name,
+                "client_signature": client_sig_url,
+                "technician_name": sig.technician_name
+            }
+        return None
 
     def create(self, validated_data):
         technicians_list = validated_data.pop('technicians', [])
@@ -236,6 +252,27 @@ class InspectionTemplateSerializer(serializers.ModelSerializer):
             InspectionPhoto.objects.create(template=template, **photo_data)
 
         return template
+
+    def update(self, instance, validated_data):
+        categories_data = validated_data.pop('categories', None)
+        
+        # Atualiza os campos básicos do template
+        instance.name = validated_data.get('name', instance.name)
+        instance.equipment_type = validated_data.get('equipment_type', instance.equipment_type)
+        instance.equipment = validated_data.get('equipment', instance.equipment)
+        instance.save()
+
+        # Se foram enviadas categorias, atualizamos de forma limpa (apagando as antigas e recriando ou sincronizando)
+        if categories_data is not None:
+            # Estratégia simples: remove as categorias antigas e cria as novas enviadas no payload
+            instance.categories.all().delete()
+            for cat_data in categories_data:
+                items_data = cat_data.pop('items', [])
+                category = InspectionCategory.objects.create(template=instance, **cat_data)
+                for item_data in items_data:
+                    InspectionItem.objects.create(category=category, **item_data)
+
+        return instance
 
 class TeamMemberSerializer(serializers.ModelSerializer):
     initials = serializers.ReadOnlyField()

@@ -1,12 +1,41 @@
-// ClientsView.jsx
 import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 import { useClients } from "../hooks/useClients";
 import NewClientModal from "../components/NewClientModal";
 
 export default function ClientesView() {
-  const { clients, loading, error, addClient } = useClients();
+  const { clients, loading, error, addClient, editClient, removeClient } = useClients();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clientToEdit, setClientToEdit] = useState(null);
+
+  const handleOpenCreate = () => {
+    setClientToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (client) => {
+    setClientToEdit(client);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Tem certeza que deseja eliminar o cliente "${name}"?`)) {
+      try {
+        await removeClient(id);
+        window.location.reload();
+      } catch (err) {
+        alert("Erro ao eliminar o cliente.");
+      }
+    }
+  };
+
+  const handleFormSubmit = async (formData) => {
+    if (clientToEdit) {
+      await editClient(clientToEdit.id, formData);
+    } else {
+      await addClient(formData);
+    }
+  };
 
   return (
     <div className="mt-6">
@@ -19,10 +48,10 @@ export default function ClientesView() {
           <h2 className="text-3xl font-bold text-slate-800">Clientes</h2>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreate}
           className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-1.5 transition"
         >
-          <Plus size={14} /> + Novo cliente
+          <Plus size={14} /> Novo cliente
         </button>
       </div>
 
@@ -45,18 +74,17 @@ export default function ClientesView() {
             <thead>
               <tr className="border-b border-gray-100 text-[10px] font-mono text-gray-400 uppercase tracking-wider">
                 <th className="pb-4 font-semibold w-1/3">CLIENTE</th>
-                <th className="pb-4 font-semibold w-1/3">CONTRATO</th>
+                <th className="pb-4 font-semibold w-1/4">CONTRATO</th>
                 <th className="pb-4 font-semibold w-1/6">ORDENS ATIVAS</th>
-                <th className="pb-4 font-semibold w-1/6 text-right pr-4">
-                  STATUS
-                </th>
+                <th className="pb-4 font-semibold w-1/6 text-center">STATUS</th>
+                <th className="pb-4 font-semibold w-1/6 text-right pr-4">AÇÕES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 text-xs">
               {clients.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="py-6 text-center text-gray-400 font-mono"
                   >
                     Nenhum cliente cadastrado na base de dados.
@@ -78,7 +106,7 @@ export default function ClientesView() {
 
                       {/* Código do Contrato / Data */}
                       <td className="py-4 text-gray-400 font-mono text-[11px]">
-                        {client.contract_code}
+                        {client.contract_code || "—"}
                       </td>
 
                       {/* Ordens Ativas */}
@@ -87,9 +115,9 @@ export default function ClientesView() {
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 text-right">
+                      <td className="py-4 text-center">
                         <span
-                          className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-4 py-1.5 rounded-full w-28 justify-center ${
+                          className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1 rounded-full justify-center ${
                             isAtivo
                               ? "bg-emerald-50 text-emerald-700"
                               : "bg-amber-100/70 text-amber-800"
@@ -103,6 +131,24 @@ export default function ClientesView() {
                           {client.status}
                         </span>
                       </td>
+
+                      {/* Ações (Editar e Apagar) */}
+                      <td className="py-4 text-right pr-4 space-x-2">
+                        <button
+                          onClick={() => handleOpenEdit(client)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          title="Editar Cliente"
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(client.id, client.name)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Apagar Cliente"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -112,11 +158,12 @@ export default function ClientesView() {
         )}
       </div>
 
-      {/* Modal de Adição de Cliente */}
+      {/* Modal de Adição/Edição de Cliente */}
       <NewClientModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={addClient}
+        onSubmit={handleFormSubmit}
+        clientToEdit={clientToEdit}
       />
     </div>
   );

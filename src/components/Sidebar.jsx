@@ -16,6 +16,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import { AuthContext } from "../authContext/AuthContext";
+import companyLogo from "../assets/logo.jpg";
 
 export default function Sidebar({ currentTab, setCurrentTab }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
 
       {/* Sidebar Principal */}
       <aside
-        className={`fixed md:static top-0 left-0 z-40 h-screen w-64 bg-[#151c24] text-slate-300 flex flex-col justify-between p-4 border-r border-slate-800 shrink-0 transition-transform duration-300 ease-in-out ${
+        className={`fixed md:relative inset-y-0 left-0 z-40 h-screen w-64 bg-black text-slate-300 flex flex-col justify-between p-4 border-r border-neutral-900 shrink-0 transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -69,15 +70,13 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
           {/* Header com Logo */}
           <div className="flex items-center justify-between px-2 pt-2 md:pt-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-slate-950 text-lg">
-                VT
-              </div>
+              <img src={companyLogo} className="logo-img" style={{ maxHeight: "55px" }} alt="Logo" />
               <div>
                 <h1 className="font-bold text-white text-base leading-tight">
-                  VetorTécnica
+                  CARVALHO
                 </h1>
                 <p className="text-[10px] uppercase tracking-wider text-slate-400">
-                  Painel de Controle
+                  SECURITY FIRE
                 </p>
               </div>
             </div>

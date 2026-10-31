@@ -131,7 +131,7 @@ export default function NewServiceOrderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8 flex flex-col max-h-[90vh] overflow-hidden">
         
         {/* Cabeçalho Elegante com Logo Estático da Empresa */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
@@ -153,7 +153,8 @@ export default function NewServiceOrderModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {/* Nº da OS e Cliente */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -374,9 +375,10 @@ export default function NewServiceOrderModal({
               ))
             )}
           </div>
+          </div>
 
           {/* Botões do Rodapé */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-white z-10 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -388,7 +390,7 @@ export default function NewServiceOrderModal({
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-lg text-xs transition disabled:opacity-50"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               Gerar Ordem de Serviço

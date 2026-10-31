@@ -1,7 +1,10 @@
+//useInspectionTemplates.js
 import { useState, useEffect, useCallback } from "react";
 import api, {  
   getInspectionTemplates, 
   createInspectionTemplate, 
+  updateInspectionTemplate, 
+  deleteInspectionTemplate,
   createInspectionCategory, 
   createInspectionItem 
 } from "../services/api";
@@ -88,12 +91,32 @@ export function useInspectionTemplates() {
     await fetchTemplates();
   };
 
+  const editTemplate = async (id, templateData) => {
+    const payload = {
+      name: templateData.name,
+      equipment_type: templateData.equipment_type,
+      equipment: templateData.equipment || null,
+      categories: templateData.categories || []
+    };
+
+    const res = await updateInspectionTemplate(id, payload); 
+    await fetchTemplates();
+    return res.data;
+  };
+
+  const removeTemplate = async (id) => {
+    await deleteInspectionTemplate(id); // <--- Usar a função importada
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  };
+
   return {
     templates,
     loading,
     error,
     addTemplate,
     addItemToTemplate,
+    editTemplate,
+    removeTemplate,
     refreshTemplates: fetchTemplates,
   };
 }

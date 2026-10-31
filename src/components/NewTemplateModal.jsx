@@ -1,5 +1,5 @@
 // NewTemplateModal.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Plus, Trash2, Loader2, Sparkles, Camera, Image, Upload } from "lucide-react";
 
 // Dicionário de Categorias e Itens Padrão
@@ -107,7 +107,8 @@ export default function NewTemplateModal({
   onClose,
   onSave = () => {},
   isLoading,
-  equipments = []
+  equipments = [],
+  templateToEdit = null
 }) {
   const [templateName, setTemplateName] = useState("");
   const [equipmentType, setEquipmentType] = useState("");
@@ -116,6 +117,36 @@ export default function NewTemplateModal({
   // Estado para controlar as fotografias do relatório
   const [photos, setPhotos] = useState([]);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (templateToEdit) {
+      setTemplateName(templateToEdit.name || "");
+      setEquipmentType(templateToEdit.equipment_type || "");
+      setCategories(templateToEdit.categories || []);
+      
+      // Mapeia as fotos existentes ajustando o caminho para incluir a URL base do backend se necessário
+      const formattedPhotos = (templateToEdit.photos || []).map((photo) => {
+        let imageUrl = photo.image;
+        if (imageUrl && !imageUrl.startsWith("http") && !imageUrl.startsWith("blob:")) {
+          const baseUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8001";
+          imageUrl = `${baseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+        }
+        return {
+          id: photo.id,
+          url: imageUrl,
+          caption: photo.label || "",
+          file: null // fotos já salvas não precisam de novo upload físico
+        };
+      });
+
+      setPhotos(formattedPhotos);
+    } else {
+      setTemplateName("");
+      setEquipmentType("");
+      setCategories([]);
+      setPhotos([]);
+    }
+  }, [templateToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -254,7 +285,7 @@ export default function NewTemplateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden my-8 relative">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden my-8 relative flex flex-col max-h-[90vh]">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
@@ -266,7 +297,9 @@ export default function NewTemplateModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-6 overflow-y-auto flex-1">
+
           {/* Informações Básicas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -454,24 +487,25 @@ export default function NewTemplateModal({
               ))
             )}
           </div>
+          </div>
 
           {/* Botões de Ação */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-3 px-6 py-4 bg-white border-t border-gray-100 z-10 shrink-0">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancelar
+              Fechar
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2 transition-colors"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-lg text-xs transition disabled:opacity-50"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Guardar Modelo
+              {templateToEdit ? "Atualizar Modelo" : "Guardar Modelo"}
             </button>
           </div>
         </form>
