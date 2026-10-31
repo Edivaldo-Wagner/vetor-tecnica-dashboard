@@ -11,6 +11,7 @@ import {
 } from "../services/api";
 import ExecuteServiceOrderModal from "./ExecuteServiceOrderModal";
 import NewServiceOrderModal from "./NewServiceOrderModal";
+import assignMain from "../assets/assign-main.jpg";
 import companyLogo from "../assets/logo.jpg";
 
 export default function ServiceOrdersView() {
@@ -454,7 +455,7 @@ export default function ServiceOrdersView() {
               <tr>
                 <td class="signature-cell">
                   <div class="signature-img-box">
-                    <img src="/src/assets/assign-main.jpg" class="signature-img" alt="Assinatura Técnico" onerror="this.style.display='none'" />
+                    <img src="${assignMain}" class="signature-img" alt="Assinatura Técnico" onerror="this.style.display='none'" />
                   </div>
                   <div class="signature-line">
                     Guilherme C. Junior<br/>
