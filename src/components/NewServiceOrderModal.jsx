@@ -13,7 +13,8 @@ export default function NewServiceOrderModal({
   clients = [],
   equipments = [],
   templates = [],
-  technicians = []
+  technicians = [],
+  preselectedClientId = null
 }) {
   const [osNumber, setOsNumber] = useState("");
   const [selectedClient, setSelectedClient] = useState("");
@@ -44,11 +45,24 @@ export default function NewServiceOrderModal({
       setExecutionAddress("");
       setExecutionStart("");
       setExecutionEnd("");
-      setSelectedClient("");
       setClientLogo(null);
       setClientLogoPreview(null);
+
+      if (preselectedClientId) {
+        setSelectedClient(preselectedClientId.toString());
+        const clientObj = clients.find((c) => c.id === parseInt(preselectedClientId));
+        if (clientObj) {
+          setExecutionAddress(clientObj.address || clientObj.location || "");
+          if (clientObj.logo || clientObj.logo_url) {
+            setClientLogoPreview(clientObj.logo || clientObj.logo_url);
+            setClientLogo(clientObj.logo || clientObj.logo_url);
+          }
+        }
+      } else {
+        setSelectedClient("");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedClientId, clients]);
 
 
 
@@ -71,10 +85,10 @@ export default function NewServiceOrderModal({
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setClientLogo(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setClientLogoPreview(reader.result);
+        setClientLogo(reader.result); 
       };
       reader.readAsDataURL(file);
     }

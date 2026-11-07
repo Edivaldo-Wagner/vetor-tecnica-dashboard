@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Play, CheckCircle2, Clock, AlertCircle, FileText, CheckCircle } from "lucide-react";
+import api from "../services/api";
 import { 
   getServiceOrders, 
   getInspectionTemplates, 
@@ -20,6 +21,7 @@ export default function ServiceOrdersView() {
   const [clients, setClients] = useState([]);
   const [equipments, setEquipments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [preselectedClientId, setPreselectedClientId] = useState(null);
   
   // Estado para controlar a aba ativa: "abertas" ou "concluidas"
   const [activeTab, setActiveTab] = useState(() => {
@@ -33,6 +35,16 @@ export default function ServiceOrdersView() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    const savedClientId = sessionStorage.getItem("@vetortecnica:preselectedClientId");
+    if (savedClientId) {
+      sessionStorage.removeItem("@vetortecnica:preselectedClientId");
+      setPreselectedClientId(parseInt(savedClientId));
+      setIsNewOpen(true);
+    }
   }, []);
 
   const loadData = async () => {
@@ -92,18 +104,15 @@ export default function ServiceOrdersView() {
 
   const currentOrdersList = activeTab === "abertas" ? openOrders : completedOrders;
 
-  // Função para exportar o PDF detalhado da Ordem de Serviço com o Bloco de Assinaturas (Técnico e Cliente)
+  // Função para exportar o PDF detalhado da Ordem de Serviço
   const handleExportPDF = async (osItem) => {
     let os = { ...osItem };
     try {
-      const resSync = await api.get(`service-orders/${os.id}/sync-signature/`);
-      console.log("Sync SUCESSO:", resSync.data);
-      
+      // Busca apenas os dados atualizados da O.S. diretamente da API
       const resOs = await api.get(`service-orders/${os.id}/`);
       os = resOs.data;
-      console.log("Dados atualizados da O.S.:", os);
     } catch (err) {
-      console.log("Erro detalhado no sync-signature:", err.response?.data || err.message);
+      console.log("Erro ao buscar dados atualizados da O.S.:", err);
     }
 
     const printWindow = window.open("", "_blank");
@@ -638,13 +647,17 @@ export default function ServiceOrdersView() {
       {/* Modais */}
       <NewServiceOrderModal
         isOpen={isNewOpen}
-        onClose={() => setIsNewOpen(false)}
+        onClose={() => {
+          setIsNewOpen(false);
+          setPreselectedClientId(null);
+        }}
         onSave={handleCreateOrder}
         isLoading={isLoading}
         clients={clients}
         equipments={equipments}
         templates={templates}
         technicians={technicians}
+        preselectedClientId={preselectedClientId}
       />
 
       <ExecuteServiceOrderModal

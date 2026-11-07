@@ -51,7 +51,7 @@ export default function App() {
 
         {/* Alternância de Abas */}
         {currentTab === "admin" && <AdminDashboard />}
-        {currentTab === "clientes" && <ClientsView />}
+        {currentTab === "clientes" && <ClientsView setCurrentTab={handleSetTab} />}
         {currentTab === "laudos" && <ReportsView />}
         {currentTab === "equipe" && <TeamView />}
         {currentTab === "plataforma" && <PlatformView />}

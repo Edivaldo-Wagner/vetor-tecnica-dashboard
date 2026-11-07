@@ -127,154 +127,194 @@ class ServiceOrderViewSet(viewsets.ModelViewSet):
                         }
                     )
 
-        # 3. Processar Assinaturas (Técnico e Cliente)
+        # 3. Processar Assinaturas (Técnico e Cliente) de forma totalmente segura
         signature_data = request.data.get('signature')
-        sig_obj = None
         if signature_data:
-            sig_obj, created = ServiceOrderSignature.objects.update_or_create(
-                service_order=service_order,
-                defaults={
-                    'client_name': signature_data.get('client_name', ''),
-                    'technician_name': signature_data.get('technician_name', '')
-                }
-            )
-            
-            tech_sig_b64 = signature_data.get('technician_signature')
-            if tech_sig_b64 and 'data:image' in tech_sig_b64:
+            try:
+                sig_obj, created = ServiceOrderSignature.objects.get_or_create(
+                    service_order=service_order
+                )
+                
+                sig_obj.client_name = signature_data.get('client_name', '')
+                sig_obj.technician_name = signature_data.get('technician_name', '')
+                sig_obj.save()
+
                 import base64
                 from django.core.files.base import ContentFile
-                format, imgstr = tech_sig_b64.split(';base64,')
-                ext = format.split('/')[-1]
-                sig_obj.technician_signature.save(f"tech_sig_{service_order.id}.{ext}", ContentFile(base64.b64decode(imgstr)), save=True)
 
+                # Cliente
+                client_sig_b64 = signature_data.get('client_signature')
+                if client_sig_b64 and isinstance(client_sig_b64, str) and 'data:image' in client_sig_b64:
+                    try:
+                        # Extrai a string base64 de forma limpa, ignorando o cabeçalho exato
+                        imgstr = client_sig_b64.split(';base64,')[1]
+                        sig_obj.client_signature.save(
+                            f"client_sig_{service_order.id}.png", 
+                            ContentFile(base64.b64decode(imgstr)), 
+                            save=True
+                        )
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        print("Erro detalhado ao salvar imagem do cliente:", e)
+
+                # Técnico
+                tech_sig_b64 = signature_data.get('technician_signature')
+                if tech_sig_b64 and isinstance(tech_sig_b64, str) and 'data:image' in tech_sig_b64:
+                    try:
+                        imgstr = tech_sig_b64.split(';base64,')[1]
+                        sig_obj.technician_signature.save(
+                            f"tech_sig_{service_order.id}.png", 
+                            ContentFile(base64.b64decode(imgstr)), 
+                            save=True
+                        )
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        print("Erro detalhado ao salvar imagem do técnico:", e)
+
+            except Exception as sig_err:
+                import traceback
+                traceback.print_exc()
+                print("Erro geral ao processar assinaturas:", sig_err)
+
+        # Retorna o sucesso da operação para o frontend
+        serializer = self.get_serializer(service_order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+        # ==========================================
+        # INTEGRAÇÃO ZAPSIGN COMENTADA (GUARDADA PARA O FUTURO)
+        # ==========================================
+        
         # 4. Integração com a ZapSign para Assinatura do Cliente
         client_email = service_order.client.contact_email or service_order.client.access_email or "cliente@exemplo.com"
         client_name = (signature_data and signature_data.get('client_name')) or service_order.client.name
 
-        import io
-        import base64
-        from reportlab.lib.pagesizes import letter
-        from reportlab.pdfgen import canvas
+        #import io
+        #import base64
+        #from reportlab.lib.pagesizes import letter
+        #from reportlab.pdfgen import canvas
 
-        buffer = io.BytesIO()
-        p = canvas.Canvas(buffer, pagesize=letter)
+        #buffer = io.BytesIO()
+        #p = canvas.Canvas(buffer, pagesize=letter)
         
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(50, 750, f"RELATÓRIO DE EXECUÇÃO - O.S. #{service_order.os_number}")
+        #p.setFont("Helvetica-Bold", 14)
+        #p.drawString(50, 750, f"RELATÓRIO DE EXECUÇÃO - O.S. #{service_order.os_number}")
         
-        p.setFont("Helvetica", 10)
-        p.drawString(50, 725, f"Cliente: {service_order.client.name}")
-        p.drawString(50, 710, f"Escopo: {service_order.scope or 'N/A'}")
-        p.drawString(50, 695, f"Serviços Complementares: {service_order.complementary_services or 'N/A'}")
-        p.drawString(50, 680, f"Conclusões: {service_order.conclusions or 'N/A'}")
+        #p.setFont("Helvetica", 10)
+        #p.drawString(50, 725, f"Cliente: {service_order.client.name}")
+        #p.drawString(50, 710, f"Escopo: {service_order.scope or 'N/A'}")
+        #p.drawString(50, 695, f"Serviços Complementares: {service_order.complementary_services or 'N/A'}")
+        #p.drawString(50, 680, f"Conclusões: {service_order.conclusions or 'N/A'}")
         
-        p.drawString(50, 630, "Documento gerado automaticamente pelo sistema de gestão.")
-        p.showPage()
-        p.save()
+        #p.drawString(50, 630, "Documento gerado automaticamente pelo sistema de gestão.")
+        #p.showPage()
+        #p.save()
 
-        buffer.seek(0)
-        pdf_b64_encoded = base64.b64encode(buffer.read()).decode('utf-8')
+        #buffer.seek(0)
+        #pdf_b64_encoded = base64.b64encode(buffer.read()).decode('utf-8')
 
-        payload = {
-            "name": f"Relatório de Execução - O.S. #{service_order.os_number}",
-            "sandbox": True,
-            "base64_pdf": pdf_b64_encoded,
-            "signers": [
-                {
-                    "name": client_name,
-                    "email": client_email,
-                    "auth_mode": "token"
-                }
-            ]
-        }
+        #payload = {
+        #    "name": f"Relatório de Execução - O.S. #{service_order.os_number}",
+        #    "sandbox": True,
+        #    "base64_pdf": pdf_b64_encoded,
+        #    "signers": [
+        #        {
+        #            "name": client_name,
+        #            "email": client_email,
+        #            "auth_mode": "token"
+        #        }
+        #    ]
+        #}
 
-        headers = {
-            "Authorization": f"Bearer {settings.ZAPSIGN_API_TOKEN}",
-            "Content-Type": "application/json"
-        }
+        #headers = {
+        #    "Authorization": f"Bearer {settings.ZAPSIGN_API_TOKEN}",
+        #    "Content-Type": "application/json"
+        #}
 
-        try:
-            url_zapsign = f"{settings.ZAPSIGN_API_URL}/docs/?token={settings.ZAPSIGN_API_TOKEN}"
-            response = requests.post(url_zapsign, json=payload, headers=headers)
+        #try:
+        #    url_zapsign = f"{settings.ZAPSIGN_API_URL}/docs/?token={settings.ZAPSIGN_API_TOKEN}"
+        #    response = requests.post(url_zapsign, json=payload, headers=headers)
 
-            if response.status_code in [200, 201]:
-                res_data = response.json()
-                service_order.zapsign_doc_token = res_data.get('token')
-                service_order.client_sign_url = res_data['signers'][0].get('sign_url')
-                service_order.is_zapsign_signed = False
-                service_order.save()
+        #    if response.status_code in [200, 201]:
+        #        res_data = response.json()
+        #        service_order.zapsign_doc_token = res_data.get('token')
+        #        service_order.client_sign_url = res_data['signers'][0].get('sign_url')
+        #        service_order.is_zapsign_signed = False
+        #        service_order.save()
 
                 # Tenta consultar o documento na ZapSign para ver se já existe imagem de assinatura
-                doc_token = res_data.get('token')
-                if doc_token:
-                    url_detalhe = f"{settings.ZAPSIGN_API_URL}/docs/{doc_token}/?token={settings.ZAPSIGN_API_TOKEN}"
-                    resp_detalhe = requests.get(url_detalhe)
-                    if resp_detalhe.status_code == 200:
-                        doc_info = resp_detalhe.json()
-                        signers_list = doc_info.get('signers', [])
-                        if signers_list and sig_obj:
-                            sig_image_url = signers_list[0].get('signature_image')
-                            if sig_image_url:
-                                try:
-                                    import urllib.request
-                                    from django.core.files.base import ContentFile
-                                    req_img = urllib.request.urlopen(sig_image_url)
-                                    sig_obj.client_signature.save(f"client_sig_{service_order.id}.png", ContentFile(req_img.read()), save=True)
-                                except Exception as img_err:
-                                    print("Erro ao descarregar imagem da ZapSign:", img_err)
-        except Exception as e:
-            print("Erro ao comunicar com a ZapSign:", e)
+       #         doc_token = res_data.get('token')
+       #         if doc_token:
+       #             url_detalhe = f"{settings.ZAPSIGN_API_URL}/docs/{doc_token}/?token={settings.ZAPSIGN_API_TOKEN}"
+       #             resp_detalhe = requests.get(url_detalhe)
+       #             if resp_detalhe.status_code == 200:
+       #                 doc_info = resp_detalhe.json()
+       #                 signers_list = doc_info.get('signers', [])
+       #                 if signers_list and sig_obj:
+       #                     sig_image_url = signers_list[0].get('signature_image')
+       #                     if sig_image_url:
+       #                         try:
+       #                             import urllib.request
+       #                             from django.core.files.base import ContentFile
+       #                             req_img = urllib.request.urlopen(sig_image_url)
+       #                             sig_obj.client_signature.save(f"client_sig_{service_order.id}.png", ContentFile(req_img.read()), save=True)
+       #                         except Exception as img_err:
+       #                             print("Erro ao descarregar imagem da ZapSign:", img_err)
+       # except Exception as e:
+       #     print("Erro ao comunicar com a ZapSign:", e)
 
-        serializer = self.get_serializer(service_order)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        #serializer = self.get_serializer(service_order)
+        #return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['get'], url_path='sync-signature')
-    def sync_signature(self, request, pk=None):
-        service_order = self.get_object()
+    #@action(detail=True, methods=['get'], url_path='sync-signature')
+    #def sync_signature(self, request, pk=None):
+    #    service_order = self.get_object()
         
-        if not service_order.zapsign_doc_token:
-            return Response({"error": "Esta O.S. não possui token da ZapSign."}, status=400)
+    #    if not service_order.zapsign_doc_token:
+    #        return Response({"error": "Esta O.S. não possui token da ZapSign."}, status=400)
 
         # URL limpa sem expor o token na query string
-        url_zapsign = f"{settings.ZAPSIGN_API_URL}/docs/{service_order.zapsign_doc_token}/"
+    #    url_zapsign = f"{settings.ZAPSIGN_API_URL}/docs/{service_order.zapsign_doc_token}/"
         
         # Cabeçalho obrigatório com Bearer Token (exatamente como funcionou no curl)
-        headers = {
-            "Authorization": f"Bearer {settings.ZAPSIGN_API_TOKEN}",
-            "Content-Type": "application/json"
-        }
+    #    headers = {
+    #        "Authorization": f"Bearer {settings.ZAPSIGN_API_TOKEN}",
+    #        "Content-Type": "application/json"
+    #    }
         
-        try:
-            response = requests.get(url_zapsign, headers=headers)
+    #    try:
+    #        response = requests.get(url_zapsign, headers=headers)
 
-            if response.status_code == 200:
-                doc_data = response.json()
-                signers = doc_data.get('signers', [])
+    #        if response.status_code == 200:
+    #            doc_data = response.json()
+    #            signers = doc_data.get('signers', [])
                 
-                if signers:
-                    signer = signers[0]
-                    sig_image_url = signer.get('signature_image')
+    #            if signers:
+    #                signer = signers[0]
+    #                sig_image_url = signer.get('signature_image')
                     
-                    if sig_image_url:
-                        sig_obj, _ = ServiceOrderSignature.objects.get_or_create(service_order=service_order)
+    #                if sig_image_url:
+    #                    sig_obj, _ = ServiceOrderSignature.objects.get_or_create(service_order=service_order)
                         
-                        import urllib.request
-                        from django.core.files.base import ContentFile
+    #                    import urllib.request
+    #                    from django.core.files.base import ContentFile
                         
-                        req_img = urllib.request.urlopen(sig_image_url)
-                        sig_obj.client_signature.save(
-                            f"client_sig_{service_order.id}.png", 
-                            ContentFile(req_img.read()), 
-                            save=True
-                        )
+    #                    req_img = urllib.request.urlopen(sig_image_url)
+    #                    sig_obj.client_signature.save(
+    #                        f"client_sig_{service_order.id}.png", 
+    #                        ContentFile(req_img.read()), 
+    #                        save=True
+    #                    )
                         
                         # Devolve os dados atualizados da O.S. para o frontend exibir a imagem fresca
-                        serializer = self.get_serializer(service_order, context={'request': request})
-                        return Response(serializer.data, status=status.HTTP_200_OK)
+    #                    serializer = self.get_serializer(service_order, context={'request': request})
+    #                    return Response(serializer.data, status=status.HTTP_200_OK)
             
-            return Response({"error": "Ainda não há imagem de assinatura disponível na ZapSign."}, status=400)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+    #        return Response({"error": "Ainda não há imagem de assinatura disponível na ZapSign."}, status=400)
+    #    except Exception as e:
+    #        return Response({"error": str(e)}, status=500)
 
 class FinancialRecordViewSet(viewsets.ModelViewSet):
     queryset = FinancialRecord.objects.all().order_by('-created_at')

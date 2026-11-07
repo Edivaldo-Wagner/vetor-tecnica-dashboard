@@ -71,6 +71,6 @@ export const updateServiceOrderStatus = (id, status) =>
   api.patch(`service-orders/${id}/`, { status });
 
 // Sincronizar assinatura da ZapSign para a O.S.
-export const syncOrderSignature = (orderId) => api.get(`service-orders/${orderId}/sync-signature/`);
+//export const syncOrderSignature = (orderId) => api.get(`service-orders/${orderId}/sync-signature/`);
 
 export default api;

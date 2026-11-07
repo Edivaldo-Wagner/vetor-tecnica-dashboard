@@ -118,9 +118,7 @@ export default function Sidebar({ currentTab, setCurrentTab }) {
                     <p className="text-[10px] text-slate-400">Painel de Controlo</p>
                   </div>
                 </div>
-                <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                  Admin
-                </span>
+      
               </button>
             </div>
           )}

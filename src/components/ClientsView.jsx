@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText } from "lucide-react";
 import { useClients } from "../hooks/useClients";
 import NewClientModal from "../components/NewClientModal";
 
-export default function ClientesView() {
+export default function ClientesView({ setCurrentTab }) {
   const { clients, loading, error, addClient, editClient, removeClient } = useClients();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState(null);
@@ -34,6 +34,13 @@ export default function ClientesView() {
       await editClient(clientToEdit.id, formData);
     } else {
       await addClient(formData);
+    }
+  };
+
+  const handleCreateOSForClient = (clientId) => {
+    sessionStorage.setItem("@vetortecnica:preselectedClientId", clientId);
+    if (setCurrentTab) {
+      setCurrentTab("os");
     }
   };
 
@@ -132,22 +139,31 @@ export default function ClientesView() {
                         </span>
                       </td>
 
-                      {/* Ações (Editar e Apagar) */}
-                      <td className="py-4 text-right pr-4 space-x-2">
-                        <button
-                          onClick={() => handleOpenEdit(client)}
-                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                          title="Editar Cliente"
-                        >
-                          <Edit2 size={15} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(client.id, client.name)}
-                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                          title="Apagar Cliente"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                      {/* Ações (Criar O.S., Editar e Apagar) */}
+                      <td className="py-4 text-right pr-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleCreateOSForClient(client.id)}
+                            className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                            title="Criar Ordem de Serviço para este Cliente"
+                          >
+                            <FileText size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(client)}
+                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            title="Editar Cliente"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(client.id, client.name)}
+                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Apagar Cliente"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
