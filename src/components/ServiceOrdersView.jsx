@@ -12,7 +12,8 @@ import {
 } from "../services/api";
 import ExecuteServiceOrderModal from "./ExecuteServiceOrderModal";
 import NewServiceOrderModal from "./NewServiceOrderModal";
-import assignMain from "../assets/assign-main.jpg";
+import assignMain from "../assets/assign-main.png";
+import markWater from "../assets/water-mark.png";
 import companyLogo from "../assets/logo.jpg";
 
 export default function ServiceOrdersView() {
@@ -77,7 +78,7 @@ export default function ServiceOrdersView() {
       await createServiceOrder(orderData);
       setIsNewOpen(false);
       loadData();
-      window.location.reload();
+      //window.location.reload();
     } catch (error) {
       console.error("Erro ao criar Ordem de Serviço:", error);
     } finally {
@@ -221,16 +222,14 @@ export default function ServiceOrdersView() {
         <head>
           <title>Ordem de Serviço - #${os.os_number}</title>
           <style>
-            @page {
-              size: A4 portrait;
-              margin: 10mm;
-            }
             body {
               font-family: Arial, Helvetica, sans-serif;
               font-size: 10px;
               color: #000;
               margin: 0;
               padding: 0;
+              position: relative;
+              min-height: 100vh;
             }
             .header-table {
               width: 100%;
@@ -257,6 +256,26 @@ export default function ServiceOrdersView() {
               width: 130px;
               text-align: center;
               padding: 2px !important;
+            }
+            .watermark-container {
+              display: flex;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100vw;
+              height: 100vh;
+              align-items: center;
+              justify-content: center;
+              z-index: -1;
+              pointer-events: none;
+            }
+            @media print {
+              .watermark-img {
+                width: 210mm;
+                height: 220mm;
+                object-fit: fill;
+                opacity: 1;
+              }
             }
             .logo-img {
               max-height: 45px;
@@ -414,6 +433,9 @@ export default function ServiceOrdersView() {
           </style>
         </head>
         <body>
+          <div class="watermark-container">
+            <img src="${markWater}" class="watermark-img" alt="Marca d'água" />
+          </div>
           <table class="header-table">
             <tr>
               <td class="title-box">

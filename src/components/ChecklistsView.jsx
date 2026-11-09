@@ -5,6 +5,7 @@ import { getEquipments } from "../services/api";
 import { useInspectionTemplates } from "../hooks/useInspectionTemplates";
 import NewTemplateModal from "../components/NewTemplateModal";
 import NewInspectionItemModal from "../components/NewInspectionItemModal";
+import markWater from "../assets/water-mark.png";
 import companyLogo from "../assets/logo.jpg";
 
 export default function ChecklistsView() {
@@ -112,6 +113,26 @@ export default function ChecklistsView() {
               text-align: center;
               padding: 2px !important;
             }
+            .watermark-container {
+              display: flex;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100vw;
+              height: 100vh;
+              align-items: center;
+              justify-content: center;
+              z-index: -1;
+              pointer-events: none;
+            }
+            @media print {
+              .watermark-img {
+                width: 210mm;
+                height: 220mm;
+                object-fit: fill;
+                opacity: 1;
+              }
+            }
             .logo-img {
               max-height: 45px;
               max-width: 120px;
@@ -217,7 +238,9 @@ export default function ChecklistsView() {
           </style>
         </head>
         <body>
-          <!-- Cabeçalho Principal -->
+          <div class="watermark-container">
+            <img src="${markWater}" class="watermark-img" alt="Marca d'água" />
+          </div>
           <table class="header-table">
             <tr>
               <td class="title-box">

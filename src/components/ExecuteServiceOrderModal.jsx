@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { X, RotateCcw, Upload } from "lucide-react";
 //import { syncOrderSignature } from "../services/api";
 import SignatureCanvas from "react-signature-canvas";
-import assignMain from "../assets/assign-main.jpg";
+import assignMain from "../assets/assign-main.png";
 
 export default function ExecuteServiceOrderModal({
   isOpen,
