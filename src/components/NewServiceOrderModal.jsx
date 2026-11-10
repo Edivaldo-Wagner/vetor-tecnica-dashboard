@@ -14,7 +14,8 @@ export default function NewServiceOrderModal({
   equipments = [],
   templates = [],
   technicians = [],
-  preselectedClientId = null
+  preselectedClientId = null,
+  orderToEdit = null
 }) {
   const [osNumber, setOsNumber] = useState("");
   const [selectedClient, setSelectedClient] = useState("");
@@ -25,10 +26,7 @@ export default function NewServiceOrderModal({
   const [executionEnd, setExecutionEnd] = useState("");
   const [selectedTechs, setSelectedTechs] = useState([]);
   const [selectedEquipments, setSelectedEquipments] = useState([]);
-  
-  // Estado para o logotipo do cliente
-  const [clientLogo, setClientLogo] = useState(null);
-  const [clientLogoPreview, setClientLogoPreview] = useState(null);
+
 
   // Filtra equipamentos do cliente selecionado
   const availableEquipments = equipments.filter(
@@ -37,32 +35,48 @@ export default function NewServiceOrderModal({
 
   useEffect(() => {
     if (isOpen) {
-      setOsNumber(Math.floor(1000 + Math.random() * 9000).toString());
-      setSelectedTechs([]);
-      setSelectedEquipments([]);
-      setScope("");
-      setInstructions("");
-      setExecutionAddress("");
-      setExecutionStart("");
-      setExecutionEnd("");
-      setClientLogo(null);
-      setClientLogoPreview(null);
-
-      if (preselectedClientId) {
-        setSelectedClient(preselectedClientId.toString());
-        const clientObj = clients.find((c) => c.id === parseInt(preselectedClientId));
-        if (clientObj) {
-          setExecutionAddress(clientObj.address || clientObj.location || "");
-          if (clientObj.logo || clientObj.logo_url) {
-            setClientLogoPreview(clientObj.logo || clientObj.logo_url);
-            setClientLogo(clientObj.logo || clientObj.logo_url);
-          }
+      if (orderToEdit) {
+        setOsNumber(orderToEdit.os_number || "");
+        setSelectedClient(orderToEdit.client ? orderToEdit.client.toString() : "");
+        setExecutionAddress(orderToEdit.execution_address || "");
+        setScope(orderToEdit.scope || "");
+        setInstructions(orderToEdit.instructions || "");
+        setExecutionStart(orderToEdit.execution_start ? orderToEdit.execution_start.slice(0, 16) : "");
+        setExecutionEnd(orderToEdit.execution_end ? orderToEdit.execution_end.slice(0, 16) : "");
+        setSelectedTechs(orderToEdit.technicians || []);
+        
+        if (orderToEdit.order_equipments && orderToEdit.order_equipments.length > 0) {
+          setSelectedEquipments(
+            orderToEdit.order_equipments.map(eq => ({
+              equipment: eq.equipment,
+              template: eq.template || ""
+            }))
+          );
+        } else {
+          setSelectedEquipments([]);
         }
       } else {
-        setSelectedClient("");
+        setOsNumber(Math.floor(1000 + Math.random() * 9000).toString());
+        setSelectedTechs([]);
+        setSelectedEquipments([]);
+        setScope("");
+        setInstructions("");
+        setExecutionAddress("");
+        setExecutionStart("");
+        setExecutionEnd("");
+
+        if (preselectedClientId) {
+          setSelectedClient(preselectedClientId.toString());
+          const clientObj = clients.find((c) => c.id === parseInt(preselectedClientId));
+          if (clientObj) {
+            setExecutionAddress(clientObj.address || clientObj.location || "");
+          }
+        } else {
+          setSelectedClient("");
+        }
       }
     }
-  }, [isOpen, preselectedClientId, clients]);
+  }, [isOpen, preselectedClientId, clients, orderToEdit]);
 
 
 
@@ -73,30 +87,9 @@ export default function NewServiceOrderModal({
     const clientObj = clients.find((c) => c.id === parseInt(clientId));
     if (clientObj) {
       setExecutionAddress(clientObj.address || clientObj.location || "");
-      if (clientObj.logo || clientObj.logo_url) {
-        setClientLogoPreview(clientObj.logo || clientObj.logo_url);
-        setClientLogo(clientObj.logo || clientObj.logo_url);
-      }
     } else {
       setExecutionAddress("");
     }
-  };
-
-  const handleLogoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setClientLogoPreview(reader.result);
-        setClientLogo(reader.result); 
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveLogo = () => {
-    setClientLogo(null);
-    setClientLogoPreview(null);
   };
 
   if (!isOpen) return null;
@@ -131,7 +124,6 @@ export default function NewServiceOrderModal({
     onSave({
       os_number: osNumber,
       client: selectedClient,
-      client_logo: clientLogo,
       execution_address: executionAddress,
       scope,
       instructions,
@@ -157,7 +149,9 @@ export default function NewServiceOrderModal({
               className="h-13 w-auto object-contain pr-3 border-r border-gray-200"
             />
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 leading-tight">Nova Ordem de Serviço</h2>
+              <h2 className="text-lg font-semibold text-gray-800 leading-tight">
+                {orderToEdit ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}
+              </h2>
               <p className="text-[11px] text-gray-400">Preencha os dados abaixo para emissão da O.S.</p>
             </div>
           </div>
@@ -177,8 +171,9 @@ export default function NewServiceOrderModal({
                 type="text"
                 value={osNumber}
                 onChange={(e) => setOsNumber(e.target.value)}
+                disabled={!!orderToEdit}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -195,55 +190,6 @@ export default function NewServiceOrderModal({
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Logotipo do Cliente */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
-              <ImageIcon className="w-4 h-4 text-gray-500" /> Logotipo do Cliente
-            </label>
-            
-            {clientLogoPreview ? (
-              <div className="relative flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-gray-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-lg border border-gray-200 bg-white p-1 flex items-center justify-center overflow-hidden shadow-sm">
-                    <img 
-                      src={clientLogoPreview} 
-                      alt="Logo do cliente" 
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-700">Logotipo Selecionado</p>
-                    <p className="text-[11px] text-gray-400">Visível no cabeçalho dos relatórios</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveLogo}
-                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Remover logotipo"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-xl cursor-pointer bg-gray-50/50 hover:bg-blue-50/30 transition-all group">
-                <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                  <UploadCloud className="w-6 h-6 text-gray-400 group-hover:text-blue-600 transition-colors mb-1" />
-                  <p className="text-xs text-gray-600 group-hover:text-blue-700">
-                    <span className="font-semibold">Clique para enviar</span> ou arraste o logo aqui
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">PNG, JPG ou SVG (Recomendado fundo transparente)</p>
-                </div>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleLogoChange} 
-                  className="hidden" 
-                />
-              </label>
-            )}
           </div>
 
           {/* Local da Execução */}
@@ -407,7 +353,7 @@ export default function NewServiceOrderModal({
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-lg text-xs transition disabled:opacity-50"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Gerar Ordem de Serviço
+              {orderToEdit ? "Guardar Alterações" : "Gerar Ordem de Serviço"}
             </button>
           </div>
         </form>

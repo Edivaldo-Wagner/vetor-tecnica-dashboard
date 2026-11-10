@@ -336,6 +336,212 @@ export default function ChecklistsView() {
     printWindow.document.close();
   };
 
+  const handleExportWord = async (tmpl) => {
+    const convertImageToBase64 = async (imgSrc) => {
+      if (!imgSrc) return "";
+      if (imgSrc.startsWith("data:")) return imgSrc;
+      try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error("Erro ao converter imagem para base64:", e);
+        return imgSrc;
+      }
+    };
+
+    const logoBase64 = await convertImageToBase64(companyLogo);
+
+    // Converte todas as imagens do relatório fotográfico para Base64 antecipadamente
+    let processedPhotos = [];
+    if (tmpl.photos && tmpl.photos.length > 0) {
+      processedPhotos = await Promise.all(
+        tmpl.photos.map(async (p) => ({
+          ...p,
+          base64Image: await convertImageToBase64(p.image)
+        }))
+      );
+    }
+
+    const renderPhotosHtml = () => {
+      if (processedPhotos.length === 0) return "";
+
+      const rowsHtml = processedPhotos.reduce((rows, photo, index) => {
+        if (index % 2 === 0) rows.push([]);
+        rows[rows.length - 1].push(photo);
+        return rows;
+      }, []).map(row => `
+        <tr>
+          ${row.map(p => `
+            <td width="50%" style="width: 50%; border: 1.5px solid #000; padding: 8px; text-align: center; vertical-align: top;">
+              <div style="background-color: #f9f9f9; border: 1px solid #ccc; padding: 4px; margin-bottom: 4px;">
+                <img src="${p.base64Image}" style="width: 100%; max-height: 250px; object-fit: contain;" />
+              </div>
+              <div style="font-size: 8.5pt; font-weight: bold; text-align: left; background: #f0f0f0; padding: 3px; border: 1px solid #ddd;">
+                ${p.label || "Sem descrição"}
+              </div>
+            </td>
+          `).join("")}
+          ${row.length === 1 ? '<td width="50%" style="width: 50%; border: 1.5px solid #000; padding: 8px;"></td>' : ''}
+        </tr>
+      `).join("");
+
+      return `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 14px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <tr style="background-color: #333; color: #fff;">
+            <td width="100%" colspan="2" style="width: 100%; border: 1.5px solid #000; padding: 5px 6px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">
+              RELATÓRIO FOTOGRÁFICO
+            </td>
+          </tr>
+          ${rowsHtml}
+        </table>
+      `;
+    };
+
+    const wordHtmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset="utf-8">
+        <title>Modelo - ${tmpl.name}</title>
+        <style>
+          @page {
+            size: 21cm 29.7cm;
+            margin: 2cm;
+          }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9pt;
+            color: #000;
+            width: 100%;
+          }
+          table {
+            border-collapse: collapse;
+            width: 100% !important;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+          }
+          td, th {
+            border: 1.5px solid #000;
+            padding: 4px 6px;
+            vertical-align: middle;
+          }
+        </style>
+      </head>
+      <body>
+        <!-- CABEÇALHO PRINCIPAL -->
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup>
+            <col style="width: 75%;">
+            <col style="width: 25%;">
+          </colgroup>
+          <tr>
+            <td width="75%" style="width: 75%; border: 1.5px solid #000; padding: 8px; background-color: #fdfdfd;">
+              <div style="font-size: 13pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">${tmpl.equipment_type_display || tmpl.equipment_type || "SISTEMA DE INSPEÇÃO"}</div>
+              <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">${tmpl.name}</div>
+            </td>
+            <td width="25%" style="width: 25%; border: 1.5px solid #000; text-align: center; padding: 4px; vertical-align: middle;">
+              <img src="${logoBase64}" width="75px" height="75" style="width: 75px; height: 75px; max-height: 75px; object-fit: contain;" />
+            </td>
+          </tr>
+        </table>
+
+        <!-- ESPAÇADOR -->
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+
+        <!-- TABELA DE INFORMAÇÕES GLOBAIS -->
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup>
+            <col style="width: 15%;">
+            <col style="width: 45%;">
+            <col style="width: 15%;">
+            <col style="width: 25%;">
+          </colgroup>
+          <tr>
+            <td style="background-color: #e5e5e5; font-weight: bold;">CLIENTE</td>
+            <td style="color: #666; font-style: italic;">Aguardando emissão da Ordem de Serviço</td>
+            <td style="background-color: #e5e5e5; font-weight: bold;">OS Nº</td>
+            <td style="color: #666; font-style: italic;">Pendente de Abertura</td>
+          </tr>
+          <tr>
+            <td style="background-color: #e5e5e5; font-weight: bold;">DATA/HORA</td>
+            <td style="color: #666; font-style: italic;">Aguardando agendamento</td>
+            <td style="background-color: #e5e5e5; font-weight: bold;">CHECK-IN / OUT</td>
+            <td style="color: #666; font-style: italic;">Aguardando execução em campo</td>
+          </tr>
+          <tr>
+            <td style="background-color: #e5e5e5; font-weight: bold;">TÉCNICO</td>
+            <td colspan="3" style="color: #666; font-style: italic;">Aguardando atribuição de equipa técnica</td>
+          </tr>
+        </table>
+
+        <!-- CATEGORIAS E ITENS -->
+        ${tmpl.categories && tmpl.categories.length > 0 ? tmpl.categories.map((cat) => {
+          const itemsHtml = cat.items && cat.items.length > 0 
+            ? cat.items.map((item) => `
+                <tr>
+                  <td width="68%" style="width: 68%; border: 1.5px solid #000; padding: 4px 6px;">${item.label}</td>
+                  <td width="12%" style="width: 12%; border: 1.5px solid #000; padding: 4px 6px; text-align: center; font-weight: bold;">${item.status || "SIM"}</td>
+                  <td width="20%" style="width: 20%; border: 1.5px solid #000; padding: 4px 6px; text-align: center;">${item.observation || ""}</td>
+                </tr>
+              `).join("")
+            : `
+                <tr>
+                  <td width="100%" colspan="3" style="width: 100%; border: 1.5px solid #000; padding: 4px 6px; text-align: center; font-style: italic;">Nenhum item cadastrado nesta categoria.</td>
+                </tr>
+              `;
+
+          return `
+            <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+              <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+            </table>
+            <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #e5e5e5;">
+                  <th width="100%" colspan="3" style="width: 100%; border: 1.5px solid #000; padding: 5px 6px; text-align: left; text-transform: uppercase; font-size: 9.5pt;">${cat.title}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          `;
+        }).join("") : `
+          <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+            <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+          </table>
+          <table width="100%" style="width: 100%;">
+            <tr><td style="text-align: center; padding: 15px; font-style: italic; border: 1.5px dashed #000;">Nenhuma categoria associada a este modelo de checklist.</td></tr>
+          </table>
+        `}
+
+        <!-- RELATÓRIO FOTOGRÁFICO -->
+        ${renderPhotosHtml()}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff' + wordHtmlContent], {
+      type: 'application/msword'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Modelo_Checklist_${tmpl.name.replace(/\s+/g, '_')}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Função para criar novo modelo
   const handleSaveTemplate = async (templatePayload, photosList) => {
     try {
@@ -450,6 +656,18 @@ export default function ChecklistsView() {
                       >
                         <FileText className="w-4 h-4 text-red-600" />
                         Exportar PDF
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportWord(tmpl);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg transition"
+                        title="Exportar Word do Checklist"
+                      >
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        Exportar Word
                       </button>
 
                       <button

@@ -75,6 +75,9 @@ class ServiceOrder(models.Model):
 
     os_number = models.CharField(max_length=50, unique=True, verbose_name="Número da O.S.")
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='service_orders')
+
+    execution_address = models.CharField(max_length=255, blank=True, null=True, verbose_name="Local da Execução")
+    instructions = models.TextField(blank=True, null=True, verbose_name="Instruções / Observações Técnicas")
     
     # Agendamento e Execução
     execution_start = models.DateTimeField(null=True, blank=True, verbose_name="Início Previsto")

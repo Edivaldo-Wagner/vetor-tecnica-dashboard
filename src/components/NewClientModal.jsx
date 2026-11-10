@@ -1,5 +1,6 @@
+// NewClientModal.jsx
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, UploadCloud, Trash2, Image as ImageIcon } from "lucide-react";
 
 const initialFormState = {
     name: "",
@@ -24,6 +25,8 @@ const initialFormState = {
 
 export default function NewClientModal({ isOpen, onClose, onSubmit, clientToEdit }) {
   const [formData, setFormData] = useState(initialFormState);
+  const [clientLogo, setClientLogo] = useState(null);
+  const [clientLogoPreview, setClientLogoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -48,8 +51,12 @@ export default function NewClientModal({ isOpen, onClose, onSubmit, clientToEdit
         contact_email: clientToEdit.contact_email || "",
         status: clientToEdit.status || "ativo",
       });
+      setClientLogoPreview(clientToEdit.logo || null);
+      setClientLogo(null);
     } else {
       setFormData(initialFormState);
+      setClientLogo(null);
+      setClientLogoPreview(null);
     }
   }, [clientToEdit, isOpen]);
 
@@ -60,25 +67,42 @@ export default function NewClientModal({ isOpen, onClose, onSubmit, clientToEdit
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setClientLogo(file);
+      setClientLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setClientLogo(null);
+    setClientLogoPreview(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...formData };
-
-      if (payload.monthly_fee === "" || payload.monthly_fee === null) {
-        payload.monthly_fee = 0;
-      } else {
-        payload.monthly_fee = parseFloat(payload.monthly_fee);
-      }
-
-      Object.keys(payload).forEach((key) => {
-        if (key !== "monthly_fee" && key !== "status" && (payload[key] === "" || payload[key] === null)) {
-          delete payload[key];
+      const data = new FormData();
+      
+      // Adiciona todos os campos normais do formulário
+      Object.keys(formData).forEach((key) => {
+        if (formData[key] !== null && formData[key] !== "") {
+          data.append(key, formData[key]);
         }
       });
 
-      await onSubmit(payload);
+      // CASO 1: O utilizador selecionou um logótipo NOVO (File)
+      if (clientLogo instanceof File) {
+        data.append("logo", clientLogo);
+      } 
+      // CASO 2: O utilizador removeu o logótipo (preview ficou nulo, mas o cliente já tinha ou existia edição)
+      else if (!clientLogoPreview && clientToEdit) {
+        data.append("logo", ""); // Envia vazio para o Django limpar o ImageField
+      }
+
+      await onSubmit(data);
       setFormData(initialFormState);
       onClose();
       window.location.reload();
@@ -146,6 +170,54 @@ export default function NewClientModal({ isOpen, onClose, onSubmit, clientToEdit
               </div>
             </div>
 
+            {/* LOGÓTIPO DO CLIENTE */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-gray-500" /> Logótipo do Cliente
+              </label>
+              
+              {clientLogoPreview ? (
+                <div className="relative flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-gray-50/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white p-1 flex items-center justify-center overflow-hidden shadow-sm">
+                      <img 
+                        src={clientLogoPreview} 
+                        alt="Logo do cliente" 
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700">Logótipo Selecionado</p>
+                      <p className="text-[10px] text-gray-400">Aparecerá nos relatórios de O.S.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Remover logótipo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-xl cursor-pointer bg-gray-50/50 hover:bg-blue-50/30 transition-all group">
+                  <div className="flex flex-col items-center justify-center pt-1 pb-1">
+                    <UploadCloud className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors mb-1" />
+                    <p className="text-[11px] text-gray-600 group-hover:text-blue-700">
+                      <span className="font-semibold">Clique para enviar</span> ou arraste o logo
+                    </p>
+                  </div>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleLogoChange} 
+                    className="hidden" 
+                  />
+                </label>
+              )}
+            </div>
+
             {clientToEdit && (
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -193,6 +265,7 @@ export default function NewClientModal({ isOpen, onClose, onSubmit, clientToEdit
               </div>
             </div>
 
+            {/* Demais campos do formulário mantêm-se iguais... */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">

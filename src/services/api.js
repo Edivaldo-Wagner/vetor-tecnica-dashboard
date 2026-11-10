@@ -20,8 +20,12 @@ export const getUsers = () => api.get("users/");
 
 // Clientes
 export const getClients = () => api.get("clients/");
-export const createClient = (data) => api.post("clients/", data);
-export const updateClient = (id, data) => api.put(`clients/${id}/`, data); 
+export const createClient = (data) => api.post("clients/", data, {
+  headers: { "Content-Type": "multipart/form-data" }
+});
+export const updateClient = (id, data) => api.put(`clients/${id}/`, data, {
+  headers: { "Content-Type": "multipart/form-data" }
+});
 export const deleteClient = (id) => api.delete(`clients/${id}/`);
 
 // Membros da Equipa / Técnicos
@@ -31,6 +35,8 @@ export const createTeamMember = (data) => api.post("team-members/", data);
 // Ordens de Serviço
 export const getServiceOrders = () => api.get("service-orders/");
 export const createServiceOrder = (data) => api.post("service-orders/", data);
+export const updateServiceOrder = (id, data) => api.put(`service-orders/${id}/`, data);
+export const deleteServiceOrder = (id) => api.delete(`service-orders/${id}/`);
 
 // Registro Financeiro
 export const getFinancialRecords = () => api.get("financial-records/");

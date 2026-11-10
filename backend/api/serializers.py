@@ -42,6 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     active_orders_count = serializers.SerializerMethodField()
+    logo = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Client
@@ -49,6 +50,17 @@ class ClientSerializer(serializers.ModelSerializer):
 
     def get_active_orders_count(self, obj):
         return obj.service_orders.exclude(status='concluida').count()
+
+    def update(self, instance, validated_data):
+        # Verifica se o campo 'logo' veio explicitamente vazio no payload (indicando remoção)
+        if 'logo' in validated_data and not validated_data['logo']:
+            if instance.logo:
+                # Apaga o ficheiro físico da pasta de media do servidor
+                instance.logo.delete(save=False)
+            instance.logo = None
+            validated_data.pop('logo')
+
+        return super().update(instance, validated_data)
 
 class InspectionPhotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -111,6 +123,7 @@ class ServiceOrderSignatureSerializer(serializers.ModelSerializer):
 
 class ServiceOrderSerializer(serializers.ModelSerializer):
     client_name = serializers.ReadOnlyField(source='client.name')
+    client_logo = serializers.SerializerMethodField()
     technicians_details = serializers.SerializerMethodField()
     signature_details = serializers.SerializerMethodField()
     
@@ -127,6 +140,15 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceOrder
         fields = '__all__'
+
+    def get_client_logo(self, obj):
+        if obj.client and obj.client.logo:
+            request = self.context.get('request')
+            logo_url = obj.client.logo.url
+            if request:
+                return request.build_absolute_uri(logo_url)
+            return logo_url
+        return None
 
     def get_technicians_details(self, obj):
         return [
@@ -179,6 +201,7 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         technicians_list = validated_data.pop('technicians', None)
+        order_equipments_data = validated_data.pop('order_equipments_input', None)
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -186,6 +209,19 @@ class ServiceOrderSerializer(serializers.ModelSerializer):
 
         if technicians_list is not None:
             instance.technicians.set(technicians_list)
+
+        if order_equipments_data is not None:
+            instance.order_equipments.all().delete()
+            for eq in order_equipments_data:
+                if isinstance(eq, dict):
+                    equipment_id = eq.get('equipment')
+                    template_id = eq.get('template')
+                    if equipment_id:
+                        ServiceOrderEquipment.objects.create(
+                            service_order=instance,
+                            equipment_id=equipment_id,
+                            template_id=template_id if template_id else None
+                        )
 
         return instance
 

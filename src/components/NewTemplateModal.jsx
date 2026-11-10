@@ -6,14 +6,26 @@ import { X, Plus, Trash2, Loader2, Sparkles, Camera, Image, Upload } from "lucid
 const PREDEFINED_CATALOG = {
   SDAI: {
     categories: [
+      "00 - CENTRAL DE ALARME",
       "01 - DETECTORES",
       "02 - ACIONADORES MANUAIS",
-      "03 - AVISADORES SONOROS/VISUAIS",
-      "05 - CENTRAL DE ALARME",
-      "06 - REDE DE ELETRODUTOS",
-      "07 - MÓDULOS / SAÍDAS AUXILIARES"
+      "03 - AVISADORES SONOROS/VISUAIS",      
+      "04 - REDE DE ELETRODUTOS",
+      "05 - MÓDULOS / SAÍDAS AUXILIARES"
     ],
     items: {
+      "00 - CENTRAL DE ALARME": [
+        { label: "É POSSÍVEL REALIZAR INSPEÇÃO?", status: "SIM", observation: "" },
+        { label: "A) FOI MEDIDA A TENSÃO VCA DE ENTRADA?", status: "SIM", observation: "227 Vca" },
+        { label: "B) FOI MEDIDA A TENSÃO VDC DA FONTE DE ALIMENTAÇÃO?", status: "SIM", observation: "26.9 VCC" },
+        { label: "C) FOI MEDIDA A TENSÃO DAS BATERIAS DA CENTRAL?", status: "SIM", observation: "27.1 vcc" },
+        { label: "D) AS BATERIAS ESTÃO COM BOM ASPECTO? QUAL A DATA DE FABRICAÇÃO DAS BATERIAS?", status: "SIM", observation: "Trocadas 11/03/2025" },
+        { label: "E) FOI MEDIDA A TENSÃO DOS LAÇOS DE DETECÇÃO?", status: "SIM", observation: "15 a 18 vcc" },
+        { label: "F) O CABO DE ATERRAMENTO ESTÁ BEM FIXADO AO PAINEL?", status: "SIM", observation: "" },
+        { label: "G) LÂMPADA PILOTO ACESA?", status: "SIM", observation: "" },
+        { label: "H) LÂMPADAS DE INCÊNDIO APAGADAS?", status: "SIM", observation: "" },
+        { label: "I) LÂMPADAS DE DEFEITO APAGADAS?", status: "SIM", observation: "" }
+      ],
       "01 - DETECTORES": [
         { label: "É POSSÍVEL REALIZAR INSPEÇÃO?", status: "SIM", observation: "" },
         { label: "A) BOM ASPECTO EXTERNO?", status: "SIM", observation: "" },
@@ -36,25 +48,13 @@ const PREDEFINED_CATALOG = {
         { label: "C) BOM ASPECTO EXTERNO DA LENTE?", status: "SIM", observation: "" },
         { label: "D) VISTORIADOS TODOS OS AVISADORES?", status: "SIM", observation: "" }
       ],
-      "05 - CENTRAL DE ALARME": [
-        { label: "É POSSÍVEL REALIZAR INSPEÇÃO?", status: "SIM", observation: "" },
-        { label: "A) FOI MEDIDA A TENSÃO VCA DE ENTRADA?", status: "SIM", observation: "227 Vca" },
-        { label: "B) FOI MEDIDA A TENSÃO VDC DA FONTE DE ALIMENTAÇÃO?", status: "SIM", observation: "26.9 VCC" },
-        { label: "C) FOI MEDIDA A TENSÃO DAS BATERIAS DA CENTRAL?", status: "SIM", observation: "27.1 vcc" },
-        { label: "D) AS BATERIAS ESTÃO COM BOM ASPECTO? QUAL A DATA DE FABRICAÇÃO DAS BATERIAS?", status: "SIM", observation: "Trocadas 11/03/2025" },
-        { label: "E) FOI MEDIDA A TENSÃO DOS LAÇOS DE DETECÇÃO?", status: "SIM", observation: "15 a 18 vcc" },
-        { label: "F) O CABO DE ATERRAMENTO ESTÁ BEM FIXADO AO PAINEL?", status: "SIM", observation: "" },
-        { label: "G) LÂMPADA PILOTO ACESA?", status: "SIM", observation: "" },
-        { label: "H) LÂMPADAS DE INCÊNDIO APAGADAS?", status: "SIM", observation: "" },
-        { label: "I) LÂMPADAS DE DEFEITO APAGADAS?", status: "SIM", observation: "" }
-      ],
-      "06 - REDE DE ELETRODUTOS": [
+      "04 - REDE DE ELETRODUTOS": [
         { label: "É POSSÍVEL REALIZAR INSPEÇÃO?", status: "SIM", observation: "" },
         { label: "A) BOM ASPECTO EXTERNO?", status: "SIM", observation: "" },
         { label: "B) BEM FIXADOS?", status: "SIM", observation: "" },
         { label: "C) FIAÇÃO ESTÁ APARENTE EM ALGUM TRECHO DA REDE?", status: "SIM", observation: "" }
       ],
-      "07 - MÓDULOS / SAÍDAS AUXILIARES": [
+      "05 - MÓDULOS / SAÍDAS AUXILIARES": [
         { label: "É POSSÍVEL REALIZAR INSPEÇÃO?", status: "SIM", observation: "" },
         { label: "A) MÓDULOS DE COMANDO E MONITORAMENTO OPERACIONAIS?", status: "SIM", observation: "" },
         { label: "B) SAÍDAS AUXILIARES TESTADAS E RESPONDENDO?", status: "SIM", observation: "" },

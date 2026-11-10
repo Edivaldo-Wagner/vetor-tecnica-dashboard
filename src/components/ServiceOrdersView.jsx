@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Play, CheckCircle2, Clock, AlertCircle, FileText, CheckCircle } from "lucide-react";
+import { Plus, Play, CheckCircle2, Clock, AlertCircle, FileText, CheckCircle, Edit, Trash2 } from "lucide-react";
 import api from "../services/api";
 import { 
   getServiceOrders, 
@@ -8,7 +8,9 @@ import {
   getEquipments, 
   getUsers,
   saveOrderExecution, 
-  createServiceOrder 
+  createServiceOrder,
+  updateServiceOrder, 
+  deleteServiceOrder
 } from "../services/api";
 import ExecuteServiceOrderModal from "./ExecuteServiceOrderModal";
 import NewServiceOrderModal from "./NewServiceOrderModal";
@@ -17,6 +19,7 @@ import markWater from "../assets/water-mark.png";
 import companyLogo from "../assets/logo.jpg";
 
 export default function ServiceOrdersView() {
+  const [orderToEdit, setOrderToEdit] = useState(null);
   const [orders, setOrders] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [clients, setClients] = useState([]);
@@ -85,6 +88,34 @@ export default function ServiceOrdersView() {
       setIsLoading(false);
     }
   };
+
+  const handleSaveOrderForm = async (orderData) => {
+      setIsLoading(true);
+      try {
+        if (orderToEdit) {
+          await updateServiceOrder(orderToEdit.id, orderData);
+        } else {
+          await createServiceOrder(orderData);
+        }
+        setIsNewOpen(false);
+        setOrderToEdit(null);
+        loadData();
+      } catch (error) {
+        console.error("Erro ao salvar Ordem de Serviço:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleDeleteOrder = async (id) => {
+      if (!window.confirm("Tens a certeza que pretendes eliminar esta Ordem de Serviço?")) return;
+      try {
+        await deleteServiceOrder(id);
+        loadData();
+      } catch (error) {
+        console.error("Erro ao apagar Ordem de Serviço:", error);
+      }
+    };
 
   const handleSaveExecution = async (executionData) => {
     setIsLoading(true);
@@ -442,8 +473,17 @@ export default function ServiceOrdersView() {
                 <div class="title-main">RELATÓRIO DE EXECUÇÃO DE SERVIÇO</div>
                 <div class="title-sub">ORDEM DE SERVIÇO Nº ${os.os_number}</div>
               </td>
-              <td class="logo-cell">
-                <img src="${companyLogo}" class="logo-img" alt="Logo" />
+              <td class="logo-cell" style="width: 100px;">
+                <div style="font-size: 7px; color: #666; margin-bottom: 2px; font-weight: bold;">EMPRESA</div>
+                <img src="${companyLogo}" class="logo-img" alt="Logo Empresa" />
+              </td>
+              <td class="logo-cell" style="width: 100px;">
+                <div style="font-size: 7px; color: #666; margin-bottom: 2px; font-weight: bold;">CLIENTE</div>
+                ${os.client_logo ? `
+                  <img src="${os.client_logo}" class="logo-img" alt="Logo Cliente" />
+                ` : `
+                  <div style="font-size: 8px; font-style: italic; color: #999; height: 35px; display: flex; align-items: center; justify-content: center;">Sem logo</div>
+                `}
               </td>
             </tr>
           </table>
@@ -466,6 +506,16 @@ export default function ServiceOrdersView() {
               <td colspan="3">${techNames}</td>
             </tr>
           </table>
+
+          ${os.execution_address ? `
+            <div class="section-title">Local da Execução</div>
+            <div class="text-box">${os.execution_address}</div>
+          ` : ""}
+
+          ${os.instructions ? `
+            <div class="section-title">Instruções / Observações Técnicas</div>
+            <div class="text-box">${os.instructions}</div>
+          ` : ""}
 
           ${renderEquipmentsHtml()}
 
@@ -541,6 +591,352 @@ export default function ServiceOrdersView() {
     printWindow.document.close();
   };
 
+  const handleExportWord = async (osItem) => {
+  let os = { ...osItem };
+  try {
+    const resOs = await api.get(`service-orders/${os.id}/`);
+    os = resOs.data;
+  } catch (err) {
+    console.log("Erro ao buscar dados atualizados da O.S.:", err);
+  }
+
+  const convertImageToBase64 = async (imgSrc) => {
+    if (!imgSrc) return "";
+    if (imgSrc.startsWith("data:")) return imgSrc;
+    try {
+      const response = await fetch(imgSrc);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.error("Erro ao converter imagem para base64:", e);
+      return imgSrc;
+    }
+  };
+
+  const logoBase64 = await convertImageToBase64(companyLogo);
+  const clientLogoBase64 = os.client_logo ? await convertImageToBase64(os.client_logo) : null;
+  const assignBase64 = await convertImageToBase64(assignMain);
+  const clientSignBase64 = os.signature_details?.client_signature ? await convertImageToBase64(os.signature_details.client_signature) : null;
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleString("pt-PT");
+  };
+
+  const techNames = os.technicians_details && os.technicians_details.length > 0
+    ? os.technicians_details.map(t => t.name || t.email).join(", ") 
+    : "Aguardando atribuição";
+
+  const renderEquipmentsHtml = () => {
+    if (!os.order_equipments || os.order_equipments.length === 0) {
+      return `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 12px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td width="100%" style="width: 100%; text-align: center; padding: 15px; font-style: italic; border: 1.5px dashed #000;">
+              Nenhum checklist/equipamento associado a esta Ordem de Serviço.
+            </td>
+          </tr>
+        </table>
+      `;
+    }
+
+    return os.order_equipments.map((eqItem) => {
+      const categories = eqItem.categories || [];
+      const matchedTemplate = templates.find(
+        (t) => t.id === eqItem.template || t.name === eqItem.template_name
+      );
+      const photos = eqItem.photos || (matchedTemplate && matchedTemplate.photos) || (eqItem.template && eqItem.template.photos) || [];
+
+      const categoriesHtml = categories.map((cat) => {
+        const items = cat.items || [];
+        const itemsHtml = items.length > 0 
+          ? items.map((item) => {
+              const obsValue = item.observation || item.value || "";
+              return `
+                <tr>
+                  <td width="68%" style="width: 68%; border: 1.5px solid #000; padding: 4px 6px;">${item.label}</td>
+                  <td width="12%" style="width: 12%; border: 1.5px solid #000; padding: 4px 6px; text-align: center; font-weight: bold;">${item.status || "SIM"}</td>
+                  <td width="20%" style="width: 20%; border: 1.5px solid #000; padding: 4px 6px; text-align: center;">${obsValue}</td>
+                </tr>
+              `;
+            }).join("")
+          : `
+              <tr>
+                <td width="100%" colspan="3" style="width: 100%; border: 1.5px solid #000; padding: 4px 6px; text-align: center; font-style: italic;">Nenhum item nesta categoria.</td>
+              </tr>
+            `;
+
+        return `
+          <table width="100%" style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 8px;">
+            <thead>
+              <tr style="background-color: #e5e5e5;">
+                <th width="100%" colspan="3" style="width: 100%; border: 1.5px solid #000; padding: 5px 6px; text-align: left; text-transform: uppercase; font-size: 9.5pt;">${cat.title}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+        `;
+      }).join("");
+
+      const photosHtml = photos.length > 0 ? `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 14px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <tr style="background-color: #333; color: #fff;">
+            <td width="100%" colspan="2" style="width: 100%; border: 1.5px solid #000; padding: 5px 6px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">
+              RELATÓRIO FOTOGRÁFICO - ${eqItem.equipment_name || "EQUIPAMENTO"}
+            </td>
+          </tr>
+          ${photos.reduce((rows, photo, index) => {
+            if (index % 2 === 0) rows.push([]);
+            rows[rows.length - 1].push(photo);
+            return rows;
+          }, []).map(row => `
+            <tr>
+              ${row.map(p => `
+                <td width="50%" style="width: 50%; border: 1.5px solid #000; padding: 8px; text-align: center; vertical-align: top;">
+                  <div style="background-color: #f9f9f9; border: 1px solid #ccc; padding: 4px; margin-bottom: 4px;">
+                    <img src="${p.image}" style="width: 100%; max-height: 250px; object-fit: contain;" />
+                  </div>
+                  <div style="font-size: 8.5pt; font-weight: bold; text-align: left; background: #f0f0f0; padding: 3px; border: 1px solid #ddd;">
+                    ${p.label || "Sem descrição"}
+                  </div>
+                </td>
+              `).join("")}
+              ${row.length === 1 ? '<td width="50%" style="width: 50%; border: 1.5px solid #000; padding: 8px;"></td>' : ''}
+            </tr>
+          `).join("")}
+        </table>
+      ` : "";
+
+      return `
+        <!-- Espaçador antes do bloco de equipamento -->
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 14px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <tr style="background-color: #e5e5e5;">
+            <td width="100%" style="width: 100%; border: 1.5px solid #000; padding: 5px 6px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">
+              EQUIPAMENTO: ${eqItem.equipment_name || eqItem.equipment}
+            </td>
+          </tr>
+        </table>
+        ${categoriesHtml}
+        ${photosHtml}
+      `;
+    }).join("");
+  };
+
+  const wordHtmlContent = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset="utf-8">
+      <title>Ordem de Serviço - #${os.os_number}</title>
+      <style>
+        @page {
+          size: 21cm 29.7cm;
+          margin: 2cm;
+        }
+        body {
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 9pt;
+          color: #000;
+          width: 100%;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100% !important;
+          mso-table-lspace: 0pt;
+          mso-table-rspace: 0pt;
+        }
+        td, th {
+          border: 1.5px solid #000;
+          padding: 4px 6px;
+          vertical-align: middle;
+        }
+      </style>
+    </head>
+    <body>
+      <!-- CABEÇALHO PRINCIPAL -->
+      <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+        <colgroup>
+          <col style="width: 55%;">
+          <col style="width: 22.5%;">
+          <col style="width: 22.5%;">
+        </colgroup>
+        <tr>
+          <td width="55%" style="width: 55%; border: 1.5px solid #000; padding: 8px; background-color: #fdfdfd;">
+            <div style="font-size: 13pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">RELATÓRIO DE EXECUÇÃO DE SERVIÇO</div>
+            <div style="font-size: 9pt; font-weight: bold; text-transform: uppercase;">ORDEM DE SERVIÇO Nº ${os.os_number}</div>
+          </td>
+          <td width="22.5%" style="width: 22.5%; border: 1.5px solid #000; text-align: center; padding: 4px; vertical-align: middle;">
+            <div style="font-size: 7pt; color: #666; margin-bottom: 2px; font-weight: bold;">EMPRESA</div>
+            <img src="${logoBase64}" width="65px" height="60" style="width: 65px; height: 60px; max-height: 60px; object-fit: contain;" />
+          </td>
+          <td width="22.5%" style="width: 22.5%; border: 1.5px solid #000; text-align: center; padding: 4px; vertical-align: middle;">
+            <div style="font-size: 7pt; color: #666; margin-bottom: 2px; font-weight: bold;">CLIENTE</div>
+            ${clientLogoBase64 ? `
+              <img src="${clientLogoBase64}" width="65px" height="60" style="width: 65px; height: 60px; max-height: 60px; object-fit: contain;" />
+            ` : `
+              <span style="font-size: 8pt; color: #999; font-style: italic;">Sem logo</span>
+            `}
+          </td>
+        </tr>
+      </table>
+
+      <!-- ESPAÇADOR -->
+      <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+        <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+      </table>
+
+      <!-- TABELA DE INFORMAÇÕES -->
+      <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+        <colgroup>
+          <col style="width: 15%;">
+          <col style="width: 45%;">
+          <col style="width: 15%;">
+          <col style="width: 25%;">
+        </colgroup>
+        <tr>
+          <td style="background-color: #e5e5e5; font-weight: bold;">CLIENTE</td>
+          <td style="font-weight: bold;">${os.client_name || "—"}</td>
+          <td style="background-color: #e5e5e5; font-weight: bold;">OS Nº</td>
+          <td style="font-weight: bold;">#${os.os_number}</td>
+        </tr>
+        <tr>
+          <td style="background-color: #e5e5e5; font-weight: bold;">DATA/HORA</td>
+          <td>Início: ${formatDate(os.execution_start)} - ${formatDate(os.execution_end)}</td>
+          <td style="background-color: #e5e5e5; font-weight: bold;">CHECK-IN / OUT</td>
+          <td>In: ${formatDate(os.execution_start)} | Out: ${formatDate(os.execution_end)}</td>
+        </tr>
+        <tr>
+          <td style="background-color: #e5e5e5; font-weight: bold;">TÉCNICO</td>
+          <td colspan="3">${techNames}</td>
+        </tr>
+      </table>
+
+      ${os.execution_address ? `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Local da Execução</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.execution_address}</td></tr>
+        </table>
+      ` : ""}
+
+      ${os.instructions ? `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Instruções / Observações Técnicas</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.instructions}</td></tr>
+        </table>
+      ` : ""}
+
+      ${renderEquipmentsHtml()}
+
+      ${os.scope ? `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Escopo do Trabalho</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.scope}</td></tr>
+        </table>
+      ` : ""}
+
+      ${os.conclusions ? `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Conclusões / Observações Técnicas</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.conclusions}</td></tr>
+        </table>
+      ` : ""}
+
+      <!-- ASSINATURAS -->
+      <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+        <tr><td style="border: none; height: 16px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+      </table>
+      <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+        <colgroup>
+          <col style="width: 50%;">
+          <col style="width: 50%;">
+        </colgroup>
+        <tr style="background-color: #e5e5e5;">
+          <td colspan="2" style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Assinaturas e Validação</td>
+        </tr>
+        <tr>
+          <td style="border: 1.5px solid #000; padding: 12px; text-align: center; vertical-align: bottom;">
+            <div style="height: 50px; margin-bottom: 5px;">
+              <img src="${assignBase64}" width="150" height="45" style="max-height: 45px; max-width: 180px;" />
+            </div>
+            <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 9pt;">
+              Guilherme C. Junior<br/>
+              <span style="font-weight: normal; font-size: 8pt;">Técnico Responsável</span>
+            </div>
+          </td>
+          <td style="border: 1.5px solid #000; padding: 12px; text-align: center; vertical-align: bottom;">
+            <div style="height: 50px; margin-bottom: 5px;">
+              ${clientSignBase64 ? `
+                <img src="${clientSignBase64}" width="150" height="45" style="max-height: 45px; max-width: 180px;" />
+              ` : `
+                <span style="color: #dc2626; font-weight: bold; font-size: 9pt;">Ainda não assinado pelo cliente</span>
+              `}
+            </div>
+            <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 9pt;">
+              ${os.signature_details?.client_name || os.client_name || "Cliente / Responsável"}<br/>
+              <span style="font-weight: normal; font-size: 8pt;">Representante do Cliente</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff' + wordHtmlContent], {
+    type: 'application/msword'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Ordem_de_Servico_${os.os_number}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
   return (
     <div className="space-y-6">
       {/* Header com Ações */}
@@ -550,7 +946,10 @@ export default function ServiceOrdersView() {
           <p className="text-xs text-slate-500">Gestão de vistorias, checklists e relatórios de campo</p>
         </div>
         <button
-          onClick={() => setIsNewOpen(true)}
+          onClick={() => {
+            setOrderToEdit(null);
+            setIsNewOpen(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition shadow-sm"
         >
           <Plus size={16} /> Nova Ordem de Serviço
@@ -640,12 +1039,41 @@ export default function ServiceOrdersView() {
                     </td>
                     <td className="p-3 text-right flex items-center justify-end gap-2">
                       {/* BOTÃO EXPORTAR PDF DA O.S. */}
+
+                      <button
+                        onClick={() => {
+                          setOrderToEdit(os);
+                          setIsNewOpen(true);
+                        }}
+                        className="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition"
+                        title="Editar Ordem de Serviço"
+                      >
+                        <Edit size={14} />
+                      </button>
+
+                      {/* BOTÃO APAGAR O.S. */}
+                      <button
+                        onClick={() => handleDeleteOrder(os.id)}
+                        className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"
+                        title="Eliminar Ordem de Serviço"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+
                       <button
                         onClick={() => handleExportPDF(os)}
                         className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-medium rounded-lg text-xs inline-flex items-center gap-1.5 transition"
                         title="Exportar Relatório PDF da O.S."
                       >
                         <FileText size={13} /> Exportar PDF
+                      </button>
+
+                      <button
+                        onClick={() => handleExportWord(os)}
+                        className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium rounded-lg text-xs inline-flex items-center gap-1.5 transition"
+                        title="Exportar Relatório Word da O.S."
+                      >
+                        <FileText size={13} /> Exportar Word
                       </button>
 
                       <button
@@ -672,14 +1100,16 @@ export default function ServiceOrdersView() {
         onClose={() => {
           setIsNewOpen(false);
           setPreselectedClientId(null);
+          setOrderToEdit(null);
         }}
-        onSave={handleCreateOrder}
+        onSave={handleSaveOrderForm}
         isLoading={isLoading}
         clients={clients}
         equipments={equipments}
         templates={templates}
         technicians={technicians}
         preselectedClientId={preselectedClientId}
+        orderToEdit={orderToEdit}
       />
 
       <ExecuteServiceOrderModal
