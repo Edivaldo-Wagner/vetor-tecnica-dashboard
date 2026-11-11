@@ -512,6 +512,11 @@ export default function ServiceOrdersView() {
             <div class="text-box">${os.execution_address}</div>
           ` : ""}
 
+          ${os.scope ? `
+            <div class="section-title">Escopo do Serviço</div>
+            <div class="text-box">${os.scope}</div>
+          ` : ""}
+
           ${os.instructions ? `
             <div class="section-title">Instruções / Observações Técnicas</div>
             <div class="text-box">${os.instructions}</div>
@@ -519,13 +524,13 @@ export default function ServiceOrdersView() {
 
           ${renderEquipmentsHtml()}
 
-          ${os.scope ? `
-            <div class="section-title">Escopo do Trabalho</div>
-            <div class="text-box">${os.scope}</div>
+          ${os.complementary_services ? `
+            <div class="section-title">Serviços Complementares Executados</div>
+            <div class="text-box">${os.complementary_services}</div>
           ` : ""}
-
+ 
           ${os.conclusions ? `
-            <div class="section-title">Conclusões / Observações Técnicas</div>
+            <div class="section-title">Conclusões Técnicas / Parecer Final</div>
             <div class="text-box">${os.conclusions}</div>
           ` : ""}
 
@@ -839,6 +844,20 @@ export default function ServiceOrdersView() {
         </table>
       ` : ""}
 
+      ${os.scope ? `
+        <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
+          <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Escopo do Serviço</td></tr>
+        </table>
+        <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
+          <colgroup><col style="width: 100%;"></colgroup>
+          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.scope}</td></tr>
+        </table>
+      ` : ""}
+
       ${os.instructions ? `
         <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
           <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
@@ -855,17 +874,17 @@ export default function ServiceOrdersView() {
 
       ${renderEquipmentsHtml()}
 
-      ${os.scope ? `
+      ${os.complementary_services ? `
         <table width="100%" style="width: 100% !important; border-collapse: collapse; mso-yfti-tbllook: 1194;">
           <tr><td style="border: none; height: 10px; font-size: 1px; line-height: 1px; padding: 0;">&nbsp;</td></tr>
         </table>
         <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
           <colgroup><col style="width: 100%;"></colgroup>
-          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Escopo do Trabalho</td></tr>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Serviços Complementares Executados</td></tr>
         </table>
         <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
           <colgroup><col style="width: 100%;"></colgroup>
-          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.scope}</td></tr>
+          <tr><td style="border: 1.5px solid #000; padding: 6px; font-size: 9pt;">${os.complementary_services}</td></tr>
         </table>
       ` : ""}
 
@@ -875,7 +894,7 @@ export default function ServiceOrdersView() {
         </table>
         <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse;">
           <colgroup><col style="width: 100%;"></colgroup>
-          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Conclusões / Observações Técnicas</td></tr>
+          <tr style="background-color: #e5e5e5;"><td style="border: 1.5px solid #000; font-weight: bold; text-transform: uppercase; padding: 5px;">Conclusões Técnicas / Parecer Final</td></tr>
         </table>
         <table width="100%" style="width: 100% !important; table-layout: fixed; border-collapse: collapse; margin-top: 3px;">
           <colgroup><col style="width: 100%;"></colgroup>
