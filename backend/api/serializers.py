@@ -63,10 +63,15 @@ class ClientSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class InspectionPhotoSerializer(serializers.ModelSerializer):
+    label = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = InspectionPhoto
         fields = ['id', 'template', 'label', 'image', 'created_at']
-        extra_kwargs = {'template': {'required': False}}
+        extra_kwargs = {
+            'template': {'required': False},
+            'image': {'required': False}
+        }
 
 class InspectionResponseSerializer(serializers.ModelSerializer):
     item_label = serializers.ReadOnlyField(source='item.label')
@@ -291,16 +296,14 @@ class InspectionTemplateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         categories_data = validated_data.pop('categories', None)
+        validated_data.pop('photos', None) # Ignora aqui para tratarmos de forma limpa no frontend
         
-        # Atualiza os campos básicos do template
         instance.name = validated_data.get('name', instance.name)
         instance.equipment_type = validated_data.get('equipment_type', instance.equipment_type)
         instance.equipment = validated_data.get('equipment', instance.equipment)
         instance.save()
 
-        # Se foram enviadas categorias, atualizamos de forma limpa (apagando as antigas e recriando ou sincronizando)
         if categories_data is not None:
-            # Estratégia simples: remove as categorias antigas e cria as novas enviadas no payload
             instance.categories.all().delete()
             for cat_data in categories_data:
                 items_data = cat_data.pop('items', [])

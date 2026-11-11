@@ -1,7 +1,7 @@
 // ChecklistsView.jsx
 import React, { useState, useEffect } from "react";
 import { ClipboardCheck, Plus, ChevronDown, ChevronRight, ListPlus, Edit2, Trash2, Loader2, FileText } from "lucide-react";
-import { getEquipments } from "../services/api";
+import api, { getEquipments } from "../services/api";
 import { useInspectionTemplates } from "../hooks/useInspectionTemplates";
 import NewTemplateModal from "../components/NewTemplateModal";
 import NewInspectionItemModal from "../components/NewInspectionItemModal";
@@ -542,15 +542,65 @@ export default function ChecklistsView() {
     URL.revokeObjectURL(url);
   };
 
-  // Função para criar novo modelo
+  // Função para criar ou atualizar modelo de checklist com sincronização perfeita de fotos
   const handleSaveTemplate = async (templatePayload, photosList) => {
     try {
       setIsSaving(true);
+
       if (templateToEdit) {
+        // 1. Atualiza os dados básicos e categorias do template via JSON limpo
         await editTemplate(templateToEdit.id, templatePayload);
+
+        // 2. Sincroniza as fotografias
+        const originalPhotos = templateToEdit.photos || [];
+        const currentPhotoIds = photosList.filter(p => p.file === null).map(p => String(p.id));
+
+        // Apagar fotos que foram removidas pelo utilizador
+        for (const orig of originalPhotos) {
+          if (!currentPhotoIds.includes(String(orig.id))) {
+            try {
+              await api.delete(`inspection-photos/${orig.id}/`);
+            } catch (e) {
+              console.error("Erro ao apagar foto:", e);
+            }
+          }
+        }
+
+        // Adicionar novas fotos ou atualizar legendas das existentes
+        for (const photo of photosList) {
+          if (photo.file) {
+            // Nova foto: upload via FormData dedicado
+            const formData = new FormData();
+            formData.append("template", templateToEdit.id);
+            formData.append("label", photo.caption || "Sem descrição");
+            formData.append("image", photo.file);
+            try {
+              await api.post("inspection-photos/", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+              });
+            } catch (e) {
+              console.error("Erro ao carregar nova foto:", e);
+            }
+          } else {
+            // Foto existente: atualizar legenda se foi alterada
+            const orig = originalPhotos.find(p => String(p.id) === String(photo.id));
+            if (orig && orig.label !== photo.caption) {
+              try {
+                await api.patch(`inspection-photos/${photo.id}/`, {
+                  label: photo.caption || "Sem descrição"
+                });
+              } catch (e) {
+                console.error("Erro ao atualizar legenda da foto:", e);
+              }
+            }
+          }
+        }
+
       } else {
+        // Criar novo modelo (o hook addTemplate já lida com as fotos iniciais)
         await addTemplate(templatePayload, photosList);
       }
+
       setIsTemplateModalOpen(false);
       setTemplateToEdit(null);
       window.location.reload();
@@ -560,7 +610,7 @@ export default function ChecklistsView() {
     } finally {
       setIsSaving(false);
     }
-  };
+  };;
 
   // Função para adicionar item a um modelo existente
   const handleSaveItem = async (payload) => {
